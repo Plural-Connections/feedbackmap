@@ -3,7 +3,8 @@ import pandas as pd
 from sentence_transformers import SentenceTransformer
 import json, re, spacy
 from collections import defaultdict
-from umap import umap_ as um
+
+# from umap import umap_ as um
 
 model = SentenceTransformer("all-MiniLM-L6-v2")
 spacy.cli.download("en_core_web_sm")
@@ -32,8 +33,8 @@ def embed_responses(raw_responses):
 
     # UMAP everything
     all_umap_emb = []
-    for emb in all_embeddings:
-        all_umap_emb.append(um.UMAP(n_components=2, metric="euclidean").fit(emb))
+    # for emb in all_embeddings:
+    #     all_umap_emb.append(um.UMAP(n_components=2, metric="euclidean").fit(emb))
 
     return all_sentences, all_umap_emb
 
