@@ -28,6 +28,14 @@ def get_config():
     }
 
 
+def get_questions_of_interest(columns, header="Select a question"):
+    res = st.selectbox(
+        "Select a question from your survey to analyze", [header] + columns
+    )
+    return (res != header) and [res] or None
+
+
+@st.cache(suppress_st_warning=True, hash_funcs={dict: (lambda _: None)})
 def embed_responses(raw_responses):
     # Split raw responses into sentences and embed
     all_sentences = []
@@ -71,7 +79,7 @@ def val_dictionary_for_column(df, col):
 
 def process_input_file(uploaded_file):
     df = pd.read_csv(uploaded_file, dtype=str).fillna("")
-    return df.head(50)
+    return df
 
 
 def streamlit_app():
@@ -97,19 +105,22 @@ def streamlit_app():
                 else:
                     text_response_columns.append(column)
 
-        # Compute embeddings for all of the open ended text
-        sents_and_umap_embs_for_questions = {}
+        with st.sidebar:
+            columns_to_analyze = get_questions_of_interest(text_response_columns)
 
-        data = defaultdict(lambda: {})  # group name -> group obj
-
-        with st.spinner():
-            for q in text_response_columns[:1]:
-                sents, embs = embed_responses(df[q].tolist())
-                data["main"]["matches"] = [
-                    {"sentence": sents[i], "vec": embs[i]} for i in range(len(sents))
-                ]
-                scatterplot = charts.make_scatterplot_base(data)
-                st.altair_chart(scatterplot)
+        if columns_to_analyze:
+            # Compute embeddings
+            sents_and_umap_embs_for_questions = {}
+            data = defaultdict(lambda: {})  # group name -> group obj
+            with st.spinner():
+                for q in columns_to_analyze:
+                    sents, embs = embed_responses(df[q].tolist())
+                    data["main"]["matches"] = [
+                        {"sentence": sents[i], "vec": embs[i]}
+                        for i in range(len(sents))
+                    ]
+                    scatterplot = charts.make_scatterplot_base(data)
+                    st.altair_chart(scatterplot)
 
 
 if __name__ == "__main__":
