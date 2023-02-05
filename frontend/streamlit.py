@@ -3,18 +3,12 @@
 import streamlit as st
 import pandas as pd
 from sentence_transformers import SentenceTransformer
-import json, re, spacy
+import json, spacy
 from collections import defaultdict
 from umap import umap_ as um
 
 import charts
-
-# Do not treat these columns in the input as either categorical or free-response questions
-_SKIP_COLUMNS = ["Timestamp"]
-
-# If a row has more than this many unique values (relative to total)
-# consider it to be a free-response text field
-_MAX_FRACTION_FOR_CATEGORICAL = 0.2
+import parse_csv
 
 _CONFIG = {}
 
@@ -53,35 +47,13 @@ def embed_responses(df, q):
             if cleaned_sent:
                 parent_records.append(row)
                 all_sentences.append(cleaned_sent)
-                all_embeddings.append(_CONFIG["model"].encode(cleaned_sent))
-
+    all_embeddings = _CONFIG["model"].encode(all_sentences)
     # UMAP everything
-
     all_umap_emb = um.UMAP(n_components=2, metric="euclidean").fit_transform(
         all_embeddings
     )
 
     return all_sentences, all_umap_emb, parent_records
-
-
-def val_dictionary_for_column(df, col):
-    # Pull the val:count dict for a given column, accounting for comma-separated multi-values
-    vals = defaultdict(lambda: 0)
-    for index, row in df.iterrows():
-        this_vals = [x.strip() for x in re.split(";|,", str(row[col]))]
-        for val in this_vals:
-            if not val or val.isnumeric():
-                # Skip purely numeric values for now, as these are often scale
-                # questions
-                continue
-            if val.lower() in [
-                "very important",
-                "moderately important",
-                "very important;moderately important",
-            ]:
-                val = "Moderately or very important"
-            vals[val] += 1
-    return vals
 
 
 def process_input_file(uploaded_file):
@@ -91,44 +63,31 @@ def process_input_file(uploaded_file):
 
 def streamlit_app():
     _CONFIG.update(get_config())
+    columns_to_analyze = None
 
     with st.sidebar:
         st.title("Survey Mirror")
         uploaded_file = st.file_uploader("Upload a CSV of your Google Forms results")
-
-    if uploaded_file:
-        df = process_input_file(uploaded_file)
-
-        categories = {}  # column -> val_dict
-        text_response_columns = []
-
-        for column in df.columns:
-            if column not in _SKIP_COLUMNS:
-                val_dict = val_dictionary_for_column(df, column)
-                # If it's got more than _MAX_FRACTION_FOR_CATEGORICAL * numrows different vals,
-                # consider it a text response field, otherwise it's a categorical attribute
-                if len(val_dict) < _MAX_FRACTION_FOR_CATEGORICAL * len(df.index):
-                    categories[column] = val_dict
-                else:
-                    text_response_columns.append(column)
-
-        with st.sidebar:
-            columns_to_analyze = get_questions_of_interest(text_response_columns)
-
-        if columns_to_analyze:
-            # Select box for how to color the points
-            color_key = get_color_key_of_interest(categories)
-
-            # Compute embeddings
+        if uploaded_file:
             with st.spinner():
-                for q in columns_to_analyze:
-                    sents, embs, parent_records = embed_responses(df, q)
-                    data = [
-                        {"sentence": sents[i], "vec": embs[i], "rec": parent_records[i]}
-                        for i in range(len(sents))
-                    ]
-                scatterplot = charts.make_scatterplot_base(data, color_key)
-                st.altair_chart(scatterplot)
+                df = process_input_file(uploaded_file)
+                categories, text_response_columns = parse_csv.infer_column_types(df)
+            columns_to_analyze = get_questions_of_interest(text_response_columns)
+    if columns_to_analyze:
+        # Select box for how to color the points
+        st.subheader(", ".join(columns_to_analyze))
+        color_key = get_color_key_of_interest(categories)
+
+        # Compute embeddings
+        with st.spinner():
+            for q in columns_to_analyze:
+                sents, embs, parent_records = embed_responses(df, q)
+                data = [
+                    {"sentence": sents[i], "vec": embs[i], "rec": parent_records[i]}
+                    for i in range(len(sents))
+                ]
+            scatterplot = charts.make_scatterplot_base(data, color_key)
+            st.altair_chart(scatterplot)
 
 
 if __name__ == "__main__":

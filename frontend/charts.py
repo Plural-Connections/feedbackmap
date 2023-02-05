@@ -3,18 +3,27 @@
 import altair
 import pandas as pd
 
+import parse_csv
+
 
 def make_scatterplot_base(data, color_key):
     altair.renderers.enable("html")
-    items = [
-        {
-            "Group": x["rec"].get(color_key, "other"),
-            "x": x["vec"][0],
-            "y": x["vec"][1],
-            "Content": x["sentence"],
-        }
-        for x in data
-    ]
+
+    items = []
+    for x in data:
+        answer = x["rec"].get(color_key, "Unknown")
+        items.extend(
+            [
+                {
+                    "Group": group_value,
+                    "full_answer": answer,
+                    "x": x["vec"][0],
+                    "y": x["vec"][1],
+                    "Content": x["sentence"],
+                }
+                for group_value in parse_csv.split_values(answer)
+            ]
+        )
     df = pd.DataFrame(items)
 
     chart = (
