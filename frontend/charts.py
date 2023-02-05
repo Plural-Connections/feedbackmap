@@ -4,19 +4,17 @@ import altair
 import pandas as pd
 
 
-def make_scatterplot_base(group_results):
+def make_scatterplot_base(data, color_key):
     altair.renderers.enable("html")
-    items = []
-    for group, results in group_results.items():
-        for x in results["matches"]:
-            items.append(
-                {
-                    "Community": group,
-                    "x": x["vec"][0],
-                    "y": x["vec"][1],
-                    "Content": x["sentence"],
-                }
-            )
+    items = [
+        {
+            "Group": x["rec"].get(color_key, "other"),
+            "x": x["vec"][0],
+            "y": x["vec"][1],
+            "Content": x["sentence"],
+        }
+        for x in data
+    ]
     df = pd.DataFrame(items)
 
     chart = (
@@ -25,7 +23,8 @@ def make_scatterplot_base(group_results):
         .encode(
             x=altair.X("x", axis=None, scale=altair.Scale(zero=False)),
             y=altair.Y("y", axis=None, scale=altair.Scale(zero=False)),
-            tooltip=["Community", "Content"],
+            color="Group",
+            tooltip=["Group", "Content"],
         )
         .interactive()
         .configure_view(strokeOpacity=1)

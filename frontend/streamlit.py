@@ -35,16 +35,23 @@ def get_questions_of_interest(columns, header="Select a question"):
     return (res != header) and [res] or None
 
 
+def get_color_key_of_interest(categories):
+    res = st.selectbox("Color the points based on answer to:", list(categories.keys()))
+    return res
+
+
 @st.cache(suppress_st_warning=True, hash_funcs={dict: (lambda _: None)})
-def embed_responses(raw_responses):
+def embed_responses(df, q):
     # Split raw responses into sentences and embed
+    parent_records = []
     all_sentences = []
     all_embeddings = []
-    for r in raw_responses:
-        doc = _CONFIG["nlp"](r)
+    for _, row in df.iterrows():
+        doc = _CONFIG["nlp"](row[q])
         for sent in doc.sents:
             cleaned_sent = sent.text.strip()
             if cleaned_sent:
+                parent_records.append(row)
                 all_sentences.append(cleaned_sent)
                 all_embeddings.append(_CONFIG["model"].encode(cleaned_sent))
 
@@ -54,7 +61,7 @@ def embed_responses(raw_responses):
         all_embeddings
     )
 
-    return all_sentences, all_umap_emb
+    return all_sentences, all_umap_emb, parent_records
 
 
 def val_dictionary_for_column(df, col):
@@ -109,18 +116,19 @@ def streamlit_app():
             columns_to_analyze = get_questions_of_interest(text_response_columns)
 
         if columns_to_analyze:
+            # Select box for how to color the points
+            color_key = get_color_key_of_interest(categories)
+
             # Compute embeddings
-            sents_and_umap_embs_for_questions = {}
-            data = defaultdict(lambda: {})  # group name -> group obj
             with st.spinner():
                 for q in columns_to_analyze:
-                    sents, embs = embed_responses(df[q].tolist())
-                    data["main"]["matches"] = [
-                        {"sentence": sents[i], "vec": embs[i]}
+                    sents, embs, parent_records = embed_responses(df, q)
+                    data = [
+                        {"sentence": sents[i], "vec": embs[i], "rec": parent_records[i]}
                         for i in range(len(sents))
                     ]
-                    scatterplot = charts.make_scatterplot_base(data)
-                    st.altair_chart(scatterplot)
+                scatterplot = charts.make_scatterplot_base(data, color_key)
+                st.altair_chart(scatterplot)
 
 
 if __name__ == "__main__":
