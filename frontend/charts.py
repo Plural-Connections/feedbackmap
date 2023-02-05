@@ -1,5 +1,7 @@
 #!/user/bin/env python3
 
+from collections import defaultdict
+
 import altair
 import pandas as pd
 
@@ -8,10 +10,13 @@ import parse_csv
 
 def make_scatterplot_base(data, color_key):
     altair.renderers.enable("html")
-
+    value_counts = defaultdict(lambda: 0)
     items = []
     for x in data:
         answer = x["rec"].get(color_key, "Unknown")
+        answer_values = parse_csv.split_values(answer)
+        for v in answer_values:
+            value_counts[v] += 1
         items.extend(
             [
                 {
@@ -21,10 +26,15 @@ def make_scatterplot_base(data, color_key):
                     "y": x["vec"][1],
                     "Content": x["sentence"],
                 }
-                for group_value in parse_csv.split_values(answer)
+                for group_value in answer_values
             ]
         )
     df = pd.DataFrame(items)
+
+    # Sort values by frequency (descending) so that most frequent are
+    # on the top of the legend.
+    sorted_values = list(value_counts.keys())
+    sorted_values.sort(key=lambda x: value_counts[x], reverse=True)
 
     chart = (
         altair.Chart(df, height=400, width=600)
@@ -32,7 +42,7 @@ def make_scatterplot_base(data, color_key):
         .encode(
             x=altair.X("x", axis=None, scale=altair.Scale(zero=False)),
             y=altair.Y("y", axis=None, scale=altair.Scale(zero=False)),
-            color="Group",
+            color=altair.Color("Group", sort=sorted_values),
             tooltip=["Group", "Content"],
         )
         .interactive()
