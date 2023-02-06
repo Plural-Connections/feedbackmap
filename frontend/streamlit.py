@@ -8,6 +8,7 @@ from collections import defaultdict
 from umap import umap_ as um
 
 import charts
+import gpt3_model
 import parse_csv
 
 _CONFIG = {}
@@ -73,21 +74,32 @@ def streamlit_app():
                 df = process_input_file(uploaded_file)
                 categories, text_response_columns = parse_csv.infer_column_types(df)
             columns_to_analyze = get_questions_of_interest(text_response_columns)
+
     if columns_to_analyze:
         # Select box for how to color the points
         st.subheader(", ".join(columns_to_analyze))
         color_key = get_color_key_of_interest(categories)
 
+        # Compute GPT3-based summary
+        with st.spinner():
+            with st.expander("Auto-generated summary of the responses", expanded=True):
+                res = gpt3_model.get_summary(df, columns_to_analyze)
+                st.write("**%s** %s" % (res["instructions"], res["answer"]))
+
         # Compute embeddings
         with st.spinner():
+            data = []
             for q in columns_to_analyze:
                 sents, embs, parent_records = embed_responses(df, q)
-                data = [
-                    {"sentence": sents[i], "vec": embs[i], "rec": parent_records[i]}
-                    for i in range(len(sents))
-                ]
-            scatterplot = charts.make_scatterplot_base(data, color_key)
-            st.altair_chart(scatterplot)
+                data.extend(
+                    [
+                        {"sentence": sents[i], "vec": embs[i], "rec": parent_records[i]}
+                        for i in range(len(sents))
+                    ]
+                )
+            with st.expander("Topic scatterplot of the responses", expanded=True):
+                scatterplot = charts.make_scatterplot_base(data, color_key)
+                st.altair_chart(scatterplot)
 
 
 if __name__ == "__main__":
