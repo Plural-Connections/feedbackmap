@@ -3,13 +3,13 @@
 import openai
 import streamlit as st
 
-_SAMPLE_SIZE = 50
-
+_SAMPLE_SIZE = 100
 
 def get_summary(df, column):
-    preamble = 'Here are some responses to the question "%s" % (column)'
+    preamble = "Here are some responses to the question \"%s\"" % (column)
     instructions = "Briefly summarize these responses."
-    df = df.sample(_SAMPLE_SIZE, random_state=42)
+    # TODO:  nonnull/nonempty only
+    df = df[df[column].str.len() > 0].sample(_SAMPLE_SIZE, random_state=42)
     prompt = (
         preamble
         + "\n".join([("- " + s) for s in df[column]])

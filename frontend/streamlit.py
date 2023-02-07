@@ -25,13 +25,16 @@ def get_config():
 
 def get_questions_of_interest(columns, header="Select a question"):
     res = st.selectbox(
-        "Select a question from your survey to analyze", [header] + columns
+        "Select a question from your survey to analyze", [header] + columns,
+        format_func=lambda x: str(x)
     )
     return (res != header) and [res] or None
 
 
 def get_color_key_of_interest(categories):
-    res = st.selectbox("Color the points based on answer to:", list(categories.keys()))
+    res = st.selectbox("Color the points based on the respondent's answer to:",
+                       list(categories.keys()),
+                       format_func=lambda x: str(x))
     return res
 
 
@@ -78,12 +81,11 @@ def streamlit_app():
     if columns_to_analyze:
         # Select box for how to color the points
         st.subheader(", ".join(columns_to_analyze))
-        color_key = get_color_key_of_interest(categories)
 
         # Compute GPT3-based summary
         with st.spinner():
             with st.expander("Auto-generated summary of the responses", expanded=True):
-                res = gpt3_model.get_summary(df, columns_to_analyze)
+                res = gpt3_model.get_summary(df, columns_to_analyze[0])
                 st.write("**%s** %s" % (res["instructions"], res["answer"]))
 
         # Compute embeddings
@@ -98,6 +100,7 @@ def streamlit_app():
                     ]
                 )
             with st.expander("Topic scatterplot of the responses", expanded=True):
+                color_key = get_color_key_of_interest(categories)
                 scatterplot = charts.make_scatterplot_base(data, color_key)
                 st.altair_chart(scatterplot)
 
