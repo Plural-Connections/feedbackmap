@@ -3,19 +3,14 @@
 import streamlit as st
 import pandas as pd
 from sentence_transformers import SentenceTransformer
-import json, re, spacy
+import json, spacy
 from collections import defaultdict
 
 from umap import umap_ as um
 
 import charts
-
-# Do not treat these columns in the input as either categorical or free-response questions
-_SKIP_COLUMNS = ["Timestamp"]
-
-# If a row has more than this many unique values (relative to total)
-# consider it to be a free-response text field
-_MAX_FRACTION_FOR_CATEGORICAL = 0.2
+import gpt3_model
+import parse_csv
 
 _CONFIG = {}
 
@@ -29,87 +24,85 @@ def get_config():
     }
 
 
-def embed_responses(raw_responses):
+def get_questions_of_interest(columns, header="Select a question"):
+    res = st.selectbox(
+        "Select a question from your survey to analyze", [header] + columns,
+        format_func=lambda x: str(x)
+    )
+    return (res != header) and [res] or None
+
+
+def get_color_key_of_interest(categories):
+    res = st.selectbox("Color the points based on the respondent's answer to:",
+                       list(categories.keys()),
+                       format_func=lambda x: str(x))
+    return res
+
+
+@st.cache(suppress_st_warning=True, hash_funcs={dict: (lambda _: None)})
+def embed_responses(df, q):
     # Split raw responses into sentences and embed
+    parent_records = []
     all_sentences = []
     all_embeddings = []
-    for r in raw_responses:
-        doc = _CONFIG["nlp"](r)
+    for _, row in df.iterrows():
+        doc = _CONFIG["nlp"](row[q])
         for sent in doc.sents:
             cleaned_sent = sent.text.strip()
             if cleaned_sent:
+                parent_records.append(row)
                 all_sentences.append(cleaned_sent)
-                all_embeddings.append(_CONFIG["model"].encode(cleaned_sent))
-
+    all_embeddings = _CONFIG["model"].encode(all_sentences)
     # UMAP everything
-
     all_umap_emb = um.UMAP(n_components=2, metric="euclidean").fit_transform(
         all_embeddings
     )
 
-    return all_sentences, all_umap_emb
-
-
-def val_dictionary_for_column(df, col):
-    # Pull the val:count dict for a given column, accounting for comma-separated multi-values
-    vals = defaultdict(lambda: 0)
-    for index, row in df.iterrows():
-        this_vals = [x.strip() for x in re.split(";|,", str(row[col]))]
-        for val in this_vals:
-            if not val or val.isnumeric():
-                # Skip purely numeric values for now, as these are often scale
-                # questions
-                continue
-            if val.lower() in [
-                "very important",
-                "moderately important",
-                "very important;moderately important",
-            ]:
-                val = "Moderately or very important"
-            vals[val] += 1
-    return vals
+    return all_sentences, all_umap_emb, parent_records
 
 
 def process_input_file(uploaded_file):
     df = pd.read_csv(uploaded_file, dtype=str).fillna("")
-    return df.head(50)
+    return df
 
 
 def streamlit_app():
     _CONFIG.update(get_config())
+    columns_to_analyze = None
 
     with st.sidebar:
         st.title("Survey Mirror")
         uploaded_file = st.file_uploader("Upload a CSV of your Google Forms results")
+        if uploaded_file:
+            with st.spinner():
+                df = process_input_file(uploaded_file)
+                categories, text_response_columns = parse_csv.infer_column_types(df)
+            columns_to_analyze = get_questions_of_interest(text_response_columns)
 
-    if uploaded_file:
-        df = process_input_file(uploaded_file)
+    if columns_to_analyze:
+        # Select box for how to color the points
+        st.subheader(", ".join(columns_to_analyze))
 
-        categories = {}  # column -> val_dict
-        text_response_columns = []
-
-        for column in df.columns:
-            if column not in _SKIP_COLUMNS:
-                val_dict = val_dictionary_for_column(df, column)
-                # If it's got more than _MAX_FRACTION_FOR_CATEGORICAL * numrows different vals,
-                # consider it a text response field, otherwise it's a categorical attribute
-                if len(val_dict) < _MAX_FRACTION_FOR_CATEGORICAL * len(df.index):
-                    categories[column] = val_dict
-                else:
-                    text_response_columns.append(column)
-
-        # Compute embeddings for all of the open ended text
-        sents_and_umap_embs_for_questions = {}
-
-        data = defaultdict(lambda: {})  # group name -> group obj
-
+        # Compute GPT3-based summary
         with st.spinner():
-            for q in text_response_columns[:1]:
-                sents, embs = embed_responses(df[q].tolist())
-                data["main"]["matches"] = [
-                    {"sentence": sents[i], "vec": embs[i]} for i in range(len(sents))
-                ]
-                scatterplot = charts.make_scatterplot_base(data)
+            with st.expander("Auto-generated summary of the responses", expanded=True):
+                res = gpt3_model.get_summary(df, columns_to_analyze[0])
+                st.write("**%s** %s" % (res["instructions"], res["answer"]))
+
+        # Compute embeddings
+        with st.spinner():
+            data = []
+            for q in columns_to_analyze:
+                sents, embs, parent_records = embed_responses(df, q)
+                data.extend(
+                    [
+                        {"sentence": sents[i], "vec": embs[i], "rec": parent_records[i]}
+                        for i in range(len(sents))
+                    ]
+                )
+            with st.expander("Topic scatterplot of the responses", expanded=True):
+                color_key = get_color_key_of_interest(categories)
+                scatterplot = charts.make_scatterplot_base(data, color_key)
                 st.altair_chart(scatterplot)
 
 
