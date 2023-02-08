@@ -2,44 +2,46 @@
 
 import streamlit as st
 import pandas as pd
-from sentence_transformers import SentenceTransformer
-import json, spacy
+import json
 from collections import defaultdict
 
+import hdbscan
 from umap import umap_ as um
 
 import charts
 import gpt3_model
+import local_models
 import parse_csv
 
 _CONFIG = {}
+_CLUSTER_OPTION_TEXT = "[Auto-pick colors based on the topic of the response text]"
 
 
 @st.cache(allow_output_mutation=True)
 def get_config():
-    spacy.cli.download("en_core_web_sm")
-    return {
-        "nlp": spacy.load("en_core_web_sm"),
-        "model": SentenceTransformer("all-MiniLM-L6-v2"),
-    }
+    return local_models.get_config()
 
 
 def get_questions_of_interest(columns, header="Select a question"):
     res = st.selectbox(
-        "Select a question from your survey to analyze", [header] + columns,
-        format_func=lambda x: str(x)
+        "Select a question from your survey to analyze",
+        [header] + columns,
+        format_func=lambda x: str(x),
     )
     return (res != header) and [res] or None
 
 
 def get_color_key_of_interest(categories):
-    res = st.selectbox("Color the points based on the respondent's answer to:",
-                       list(categories.keys()),
-                       format_func=lambda x: str(x))
+    res = st.selectbox(
+        "Color the points based on the respondent's answer to:",
+        [_CLUSTER_OPTION_TEXT] + list(categories.keys()),
+        format_func=lambda x: str(x),
+        index=1,
+    )
     return res
 
 
-@st.cache(suppress_st_warning=True, hash_funcs={dict: (lambda _: None)})
+@st.cache(allow_output_mutation=True, hash_funcs={dict: (lambda _: None)})
 def embed_responses(df, q):
     # Split raw responses into sentences and embed
     parent_records = []
@@ -102,6 +104,14 @@ def streamlit_app():
                 )
             with st.expander("Topic scatterplot of the responses", expanded=True):
                 color_key = get_color_key_of_interest(categories)
+                if color_key == _CLUSTER_OPTION_TEXT:
+                    clusterer = hdbscan.HDBSCAN(min_cluster_size=5)
+                    clusterer.fit(embs)
+                    data = data.copy()  # Copy, to avoid ST cache warning
+                    for i, x in enumerate(data):
+                        x["rec"][_CLUSTER_OPTION_TEXT] = "Cluster %s" % (
+                            str(clusterer.labels_[i])
+                        )
                 scatterplot = charts.make_scatterplot_base(data, color_key)
                 st.altair_chart(scatterplot)
 
