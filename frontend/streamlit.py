@@ -79,6 +79,10 @@ def streamlit_app():
             with st.spinner():
                 df = process_input_file(uploaded_file)
                 categories, text_response_columns = parse_csv.infer_column_types(df)
+            st.write(
+                "Processed %d responses with %d text response questions and %d categorical questions"
+                % (len(df), len(text_response_columns), len(categories))
+            )
             columns_to_analyze = get_questions_of_interest(text_response_columns)
 
     if columns_to_analyze:

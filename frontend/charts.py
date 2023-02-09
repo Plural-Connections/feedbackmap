@@ -46,13 +46,18 @@ def make_scatterplot_base(data, color_key):
     sorted_values = list(legend_values.keys())
     sorted_values.sort(key=lambda x: legend_values[x], reverse=True)
 
+    selection = altair.selection_multi(fields=['GroupForLegend'])
+    coloring_scheme = altair.Color(
+        "GroupForLegend", type="nominal", scale=altair.Scale(scheme="tableau20"), sort=sorted_values)
+    color = altair.condition(selection, coloring_scheme, altair.value('white'))
+
     chart = (
         altair.Chart(df, height=400, width=800)
         .mark_circle(size=60, opacity=0.8)
         .encode(
             x=altair.X("x", axis=None, scale=altair.Scale(zero=False)),
             y=altair.Y("y", axis=None, scale=altair.Scale(zero=False)),
-            color=altair.Color("GroupForLegend", sort=sorted_values),
+            color=color,
             tooltip=["Response", "Groups"],
         )
         .interactive()
@@ -64,5 +69,5 @@ def make_scatterplot_base(data, color_key):
         title=None,
         labelLimit=300,
         cornerRadius=10,
-    )
+    ).add_selection(selection)
     return chart
