@@ -41,15 +41,5 @@ def val_dictionary_for_column(df, col):
     for index, row in df.iterrows():
         this_vals = split_values(row[col])
         for val in this_vals:
-            if not val or val.isnumeric():
-                # Skip purely numeric values for now, as these are often scale
-                # questions
-                continue
-            if val.lower() in [
-                "very important",
-                "moderately important",
-                "very important;moderately important",
-            ]:
-                val = "Moderately or very important"
             vals[val] += 1
     return vals

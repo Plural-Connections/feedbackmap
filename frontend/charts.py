@@ -50,6 +50,8 @@ def make_scatterplot_base(data, color_key):
     coloring_scheme = altair.Color(
         "GroupForLegend", type="nominal", scale=altair.Scale(scheme="tableau20"), sort=sorted_values)
     color = altair.condition(selection, coloring_scheme, altair.value('white'))
+    # TODO.  Ensure "unclustered" is grey.  Below doesn't work.
+    # color = altair.condition(altair.datum.GroupForLegend == '-1', altair.value('grey'), color)
 
     chart = (
         altair.Chart(df, height=400, width=800)
@@ -63,8 +65,6 @@ def make_scatterplot_base(data, color_key):
         .interactive()
         .configure_view(strokeOpacity=1)
     ).configure_legend(
-        strokeColor="gray",
-        fillColor="#EEEEEE",
         orient="right",
         title=None,
         labelLimit=300,
