@@ -16,23 +16,28 @@ import parse_csv
 _CONFIG = {}
 _CLUSTER_OPTION_TEXT = "[Auto-pick colors based on the topic of the response text]"
 
+
 @st.cache(allow_output_mutation=True)
 def get_config():
     return local_models.get_config()
 
+
 def get_questions_of_interest(columns, header="Select a question"):
     res = st.selectbox(
-        "Select a question from your survey to analyze", [header] + columns,
-        format_func=lambda x: str(x)
+        "Select a question from your survey to analyze",
+        [header] + columns,
+        format_func=lambda x: str(x),
     )
     return (res != header) and [res] or None
 
 
 def get_color_key_of_interest(categories):
-    res = st.selectbox("Color the points based on the respondent's answer to:",
-    [_CLUSTER_OPTION_TEXT] + list(categories.keys()),
-                       format_func=lambda x: str(x),
-                       index=1)
+    res = st.selectbox(
+        "Color the points based on the respondent's answer to:",
+        [_CLUSTER_OPTION_TEXT] + list(categories.keys()),
+        format_func=lambda x: str(x),
+        index=1,
+    )
     return res
 
 
@@ -74,6 +79,10 @@ def streamlit_app():
             with st.spinner():
                 df = process_input_file(uploaded_file)
                 categories, text_response_columns = parse_csv.infer_column_types(df)
+            st.write(
+                "Processed %d responses with %d text response questions and %d categorical questions"
+                % (len(df), len(text_response_columns), len(categories))
+            )
             columns_to_analyze = get_questions_of_interest(text_response_columns)
 
     if columns_to_analyze:
@@ -104,7 +113,9 @@ def streamlit_app():
                     clusterer.fit(embs)
                     data = data.copy()  # Copy, to avoid ST cache warning
                     for i, x in enumerate(data):
-                        x["rec"][_CLUSTER_OPTION_TEXT] = "Cluster %s" % (str(clusterer.labels_[i]))
+                        x["rec"][_CLUSTER_OPTION_TEXT] = "Cluster %s" % (
+                            str(clusterer.labels_[i])
+                        )
                 scatterplot = charts.make_scatterplot_base(data, color_key)
                 st.altair_chart(scatterplot)
 
