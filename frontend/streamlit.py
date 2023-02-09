@@ -71,22 +71,42 @@ def process_input_file(uploaded_file):
 def streamlit_app():
     _CONFIG.update(get_config())
     columns_to_analyze = None
+    summary_section = st.empty()
 
     with st.sidebar:
-        st.title("Survey Mirror")
+        st.title("Feedback Mirror")
         uploaded_file = st.file_uploader("Upload a CSV of your Google Forms results")
         if uploaded_file:
             with st.spinner():
                 df = process_input_file(uploaded_file)
                 categories, text_response_columns = parse_csv.infer_column_types(df)
-            st.write(
-                "Processed %d responses with %d text response questions and %d categorical questions"
-                % (len(df), len(text_response_columns), len(categories))
-            )
+            with summary_section:
+                with st.container():
+                    st.subheader("Summary:")
+                    st.write(
+                        "Processed **%d** responses with **%d** text response questions and **%d** categorical questions"
+                        % (len(df), len(text_response_columns), len(categories))
+                    )
+                    st.write(
+                        "Select a text response column on the left sidebar to analyze the results."
+                    )
+                    st.subheader("Text response columns:")
+                    st.write("\n".join(["- " + c for c in text_response_columns]))
+                    st.subheader("Categorical columns:")
+                    st.write(
+                        "\n".join(
+                            [
+                                "- %s [%d different values]" % (c, len(v))
+                                for c, v in categories.items()
+                            ]
+                        )
+                    )
             columns_to_analyze = get_questions_of_interest(text_response_columns)
 
     if columns_to_analyze:
-        # Select box for how to color the points
+        with summary_section:
+            # Clear summary section
+            st.write("")
         st.subheader(", ".join(columns_to_analyze))
 
         # Compute GPT3-based summary

@@ -2,6 +2,7 @@
 
 import openai
 import streamlit as st
+import time
 
 _SAMPLE_SIZE = 50
 
@@ -24,7 +25,7 @@ def get_summary(df, column):
     return {"instructions": instructions, "answer": answer}
 
 
-@st.cache
+@st.cache(suppress_st_warning=True)
 def run_completion_query(prompt, temperature=0.0, num_to_generate=1, echo_prompt=False):
     tries = 0
     while tries < 3:
