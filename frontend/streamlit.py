@@ -60,7 +60,7 @@ def embed_responses(df, q):
         all_embeddings
     )
 
-    return all_sentences, all_umap_emb, parent_records
+    return all_sentences, all_umap_emb, parent_records, all_embeddings
 
 
 def process_input_file(uploaded_file):
@@ -99,7 +99,7 @@ def streamlit_app():
         with st.spinner():
             data = []
             for q in columns_to_analyze:
-                sents, embs, parent_records = embed_responses(df, q)
+                sents, embs, parent_records, full_embs = embed_responses(df, q)
                 data.extend(
                     [
                         {"sentence": sents[i], "vec": embs[i], "rec": parent_records[i]}
@@ -109,8 +109,8 @@ def streamlit_app():
             with st.expander("Topic scatterplot of the responses", expanded=True):
                 color_key = get_color_key_of_interest(categories)
                 if color_key == _CLUSTER_OPTION_TEXT:
-                    clusterer = hdbscan.HDBSCAN(min_cluster_size=5)
-                    clusterer.fit(embs)
+                    clusterer = hdbscan.HDBSCAN(min_cluster_size=3)
+                    clusterer.fit(full_embs)
                     data = data.copy()  # Copy, to avoid ST cache warning
                     for i, x in enumerate(data):
                         x["rec"][_CLUSTER_OPTION_TEXT] = "Cluster %s" % (
