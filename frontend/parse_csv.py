@@ -18,7 +18,7 @@ _MAX_FRACTION_FOR_CATEGORICAL = 0.2
 
 def infer_column_types(df):
     categories = {}  # column -> val_dict
-    text_response_columns = []
+    text_responses = {}  # column -> val_dict
     for column in df.columns:
         if column not in _SKIP_COLUMNS:
             val_dict = val_dictionary_for_column(df, column)
@@ -27,8 +27,8 @@ def infer_column_types(df):
             if len(val_dict) < _MAX_FRACTION_FOR_CATEGORICAL * len(df.index):
                 categories[column] = val_dict
             else:
-                text_response_columns.append(column)
-    return categories, text_response_columns
+                text_responses[column] = val_dict
+    return categories, text_responses
 
 
 def split_values(s):

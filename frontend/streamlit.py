@@ -71,73 +71,99 @@ def process_input_file(uploaded_file):
 def streamlit_app():
     _CONFIG.update(get_config())
     columns_to_analyze = None
-    summary_section = st.empty()
+
+    if "analyze" in st.session_state:
+        analyze_tab, summary_tab = st.tabs(["Response analysis", "Summary"])
+    else:
+        summary_tab_placeholder = st.empty()
 
     with st.sidebar:
-        st.title("Feedback Mirror")
+        st.title("Feedback Map")
         uploaded_file = st.file_uploader("Upload a CSV of your Google Forms results")
         if uploaded_file:
             with st.spinner():
                 df = process_input_file(uploaded_file)
                 categories, text_response_columns = parse_csv.infer_column_types(df)
-            with summary_section:
-                with st.container():
-                    st.subheader("Summary:")
-                    st.write(
-                        "Processed **%d** responses with **%d** text response questions and **%d** categorical questions"
-                        % (len(df), len(text_response_columns), len(categories))
-                    )
-                    st.write(
-                        "Select a text response column on the left sidebar to analyze the results."
-                    )
-                    st.subheader("Text response columns:")
-                    st.write("\n".join(["- " + c for c in text_response_columns]))
-                    st.subheader("Categorical columns:")
-                    st.write(
-                        "\n".join(
-                            [
-                                "- %s [%d different values]" % (c, len(v))
-                                for c, v in categories.items()
-                            ]
+            if "analyze" not in st.session_state:
+                with summary_tab_placeholder:
+                    summary_tab = st.tabs(["Summary"])[0]
+
+            with summary_tab:
+                st.subheader("Summary:")
+                st.write(
+                    "Processed **%d** responses with **%d** text response questions and **%d** categorical questions"
+                    % (len(df), len(text_response_columns), len(categories))
+                )
+                st.write(
+                    "Click a text response button below to analyze the results for a specific question."
+                )
+                st.subheader("Text response columns:")
+                buttons = {}
+                for k, v in text_response_columns.items():
+                    btn_col, info_col = st.columns(2)
+                    with btn_col:
+                        buttons[k] = st.button(k)
+                    with info_col:
+                        st.write(
+                            "%0.1f%% response rate"
+                            % (100.0 * (1.0 - (v.get("", 0.0) / len(df))))
                         )
+                st.subheader("Categorical columns:")
+                st.write(
+                    "\n".join(
+                        [
+                            "- %s [%d different values]" % (c, len(v))
+                            for c, v in categories.items()
+                        ]
                     )
-            columns_to_analyze = get_questions_of_interest(text_response_columns)
+                )
+            for k, b in buttons.items():
+                if b:
+                    columns_to_analyze = [k]
+                    st.session_state["analyze"] = columns_to_analyze
+                    st.experimental_rerun()
+
+            if "analyze" in st.session_state:
+                columns_to_analyze = st.session_state["analyze"]
 
     if columns_to_analyze:
-        with summary_section:
-            # Clear summary section
-            st.write("")
-        st.subheader(", ".join(columns_to_analyze))
+        with analyze_tab:
+            st.subheader(", ".join(columns_to_analyze))
+            # Compute GPT3-based summary
+            with st.spinner():
+                with st.expander(
+                    "Auto-generated summary of the responses", expanded=True
+                ):
+                    res = gpt3_model.get_summary(df, columns_to_analyze[0])
+                    st.write("**%s** %s" % (res["instructions"], res["answer"]))
 
-        # Compute GPT3-based summary
-        with st.spinner():
-            with st.expander("Auto-generated summary of the responses", expanded=True):
-                res = gpt3_model.get_summary(df, columns_to_analyze[0])
-                st.write("**%s** %s" % (res["instructions"], res["answer"]))
-
-        # Compute embeddings
-        with st.spinner():
-            data = []
-            for q in columns_to_analyze:
-                sents, embs, parent_records, full_embs = embed_responses(df, q)
-                data.extend(
-                    [
-                        {"sentence": sents[i], "vec": embs[i], "rec": parent_records[i]}
-                        for i in range(len(sents))
-                    ]
-                )
-            with st.expander("Topic scatterplot of the responses", expanded=True):
-                color_key = get_color_key_of_interest(categories)
-                if color_key == _CLUSTER_OPTION_TEXT:
-                    clusterer = hdbscan.HDBSCAN(min_cluster_size=3)
-                    clusterer.fit(full_embs)
-                    data = data.copy()  # Copy, to avoid ST cache warning
-                    for i, x in enumerate(data):
-                        x["rec"][_CLUSTER_OPTION_TEXT] = "Cluster %s" % (
-                            str(clusterer.labels_[i])
-                        )
-                scatterplot = charts.make_scatterplot_base(data, color_key)
-                st.altair_chart(scatterplot)
+            # Compute embeddings
+            with st.spinner():
+                data = []
+                for q in columns_to_analyze:
+                    sents, embs, parent_records, full_embs = embed_responses(df, q)
+                    data.extend(
+                        [
+                            {
+                                "sentence": sents[i],
+                                "vec": embs[i],
+                                "rec": parent_records[i],
+                            }
+                            for i in range(len(sents))
+                        ]
+                    )
+                with st.expander("Topic scatterplot of the responses", expanded=True):
+                    color_key = get_color_key_of_interest(categories)
+                    if color_key == _CLUSTER_OPTION_TEXT:
+                        clusterer = hdbscan.HDBSCAN(min_cluster_size=3)
+                        clusterer.fit(full_embs)
+                        data = data.copy()  # Copy, to avoid ST cache warning
+                        for i, x in enumerate(data):
+                            x["rec"][_CLUSTER_OPTION_TEXT] = "Cluster %s" % (
+                                str(clusterer.labels_[i])
+                            )
+                    scatterplot = charts.make_scatterplot_base(data, color_key)
+                    st.altair_chart(scatterplot)
 
 
 if __name__ == "__main__":
