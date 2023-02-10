@@ -1,31 +1,43 @@
 #!/user/bin/env python3
 
-import openai
 import streamlit as st
 import time
+import openai
 
 _SAMPLE_SIZE = 50
 
-def get_summary(df, column):
-    preamble = "Here are some responses to the question \"%s\"" % (column)
-    instructions = "Briefly summarize these responses."
-    # TODO:  nonnull/nonempty only
-    df = df[df[column].str.len() > 0]
-    df = df.sample(min(_SAMPLE_SIZE, len(df)), random_state=42)
-    prompt = (
-        preamble
-        + "\n".join([("- " + s) for s in df[column]])
-        + "\n\n"
-        + instructions
-        + "\n"
-    )
-    response = run_completion_query(prompt)
-    answer = set([c["text"] for c in response["choices"]])
-    answer = "\n".join(list(answer))
-    return {"instructions": instructions, "answer": answer}
+def get_config(mock_mode):
+    return {"llm": mock_mode and MockGptModel() or LiveGptModel()}
+
+class MockGptModel:
+    def get_summary(self, df, column):
+        return {"instructions": "No GPT-3 model available",
+                "answer": "No GPT-3 model available"}
+    
+class LiveGptModel:
+    def __init__(self):
+        pass
+
+    def get_summary(self, df, column):
+        preamble = "Here are some responses to the question \"%s\"" % (column)
+        instructions = "Briefly summarize these responses."
+        # TODO:  nonnull/nonempty only
+        df = df[df[column].str.len() > 0]
+        df = df.sample(min(_SAMPLE_SIZE, len(df)), random_state=42)
+        prompt = (
+            preamble
+            + "\n".join([("- " + s) for s in df[column]])
+            + "\n\n"
+            + instructions
+            + "\n"
+        )
+        response = run_completion_query(prompt)
+        answer = set([c["text"] for c in response["choices"]])
+        answer = "\n".join(list(answer))
+        return {"instructions": instructions, "answer": answer}
 
 
-@st.cache(suppress_st_warning=True)
+@st.cache_data
 def run_completion_query(prompt, temperature=0.0, num_to_generate=1, echo_prompt=False):
     tries = 0
     while tries < 3:

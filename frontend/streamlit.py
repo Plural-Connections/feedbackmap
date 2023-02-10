@@ -1,7 +1,6 @@
 #!/user/bin/env python3
 
 import streamlit as st
-import pandas as pd
 import json
 from collections import defaultdict
 
@@ -12,24 +11,18 @@ import charts
 import gpt3_model
 import local_models
 import parse_csv
+import util
 
 _CONFIG = {}
 _CLUSTER_OPTION_TEXT = "[Auto-pick colors based on the topic of the response text]"
+_MOCK_MODE = False   # Set to true to run without transformers, spacy, or gpt-3
+_TITLE = "Feedback Map"
 
-
-@st.cache(allow_output_mutation=True)
-def get_config():
-    return local_models.get_config()
-
-
-def get_questions_of_interest(columns, header="Select a question"):
-    res = st.selectbox(
-        "Select a question from your survey to analyze",
-        [header] + columns,
-        format_func=lambda x: str(x),
-    )
-    return (res != header) and [res] or None
-
+@st.cache_resource
+def get_config(mock_mode):
+    config = local_models.get_config(mock_mode)
+    config.update(gpt3_model.get_config(mock_mode))
+    return config
 
 def get_color_key_of_interest(categories):
     res = st.selectbox(
@@ -40,8 +33,8 @@ def get_color_key_of_interest(categories):
     )
     return res
 
-
-@st.cache(allow_output_mutation=True, hash_funcs={dict: (lambda _: None)})
+# hash_funcs={dict: (lambda _: None)})
+@st.cache_data
 def embed_responses(df, q):
     # Split raw responses into sentences and embed
     parent_records = []
@@ -62,69 +55,85 @@ def embed_responses(df, q):
 
     return all_sentences, all_umap_emb, parent_records, all_embeddings
 
-
-def process_input_file(uploaded_file):
-    df = pd.read_csv(uploaded_file, dtype=str).fillna("")
-    return df
+def show_import_tab(import_tab, current_csv_file_df):
+    new_csv_file = None
+    with import_tab:
+        util.include_markdown("welcome")
+        new_csv_file = st.file_uploader("Upload CSV here.")
+        if new_csv_file:
+            df = parse_csv.process_input_file(new_csv_file)
+            if not df.equals(current_csv_file_df):
+                st.session_state["uploaded"] = df
+                if "analyze" in st.session_state:
+                    del(st.session_state["analyze"])
+                st.experimental_rerun()  # TODO: why doesn't it open 1st tab here?
 
 
 def streamlit_app():
-    _CONFIG.update(get_config())
+    st.set_page_config(page_title=_TITLE, layout="wide")
+    st.title(_TITLE)
+    _CONFIG.update(get_config(_MOCK_MODE))
     columns_to_analyze = None
+    csv_file_df = None
 
     if "analyze" in st.session_state:
-        analyze_tab, summary_tab = st.tabs(["Response analysis", "Summary"])
-    else:
-        summary_tab_placeholder = st.empty()
+        columns_to_analyze = st.session_state["analyze"]
+    if "uploaded" in st.session_state:
+        csv_file_df = st.session_state["uploaded"]
 
-    with st.sidebar:
-        st.title("Feedback Map")
-        uploaded_file = st.file_uploader("Upload a CSV of your Google Forms results")
-        if uploaded_file:
-            with st.spinner():
-                df = process_input_file(uploaded_file)
-                categories, text_response_columns = parse_csv.infer_column_types(df)
-            if "analyze" not in st.session_state:
-                with summary_tab_placeholder:
-                    summary_tab = st.tabs(["Summary"])[0]
+    # Arrange tabs
+    tab_placeholder = st.empty()
+    with tab_placeholder:
+        if "analyze" in st.session_state:
+            analyze_tab, summary_tab, import_tab = st.tabs(
+                ["Response analysis", "Summary", "Import file"])
+        elif "uploaded" in st.session_state:
+            summary_tab, import_tab = st.tabs(["Summary", "Import file"])
+        else:
+            import_tab = st.tabs(["Import file"])[0]
 
-            with summary_tab:
-                st.subheader("Summary:")
-                st.write(
-                    "Processed **%d** responses with **%d** text response questions and **%d** categorical questions"
-                    % (len(df), len(text_response_columns), len(categories))
-                )
-                st.write(
-                    "Click a text response button below to analyze the results for a specific question."
-                )
-                st.subheader("Text response columns:")
-                buttons = {}
-                for k, v in text_response_columns.items():
-                    btn_col, info_col = st.columns(2)
-                    with btn_col:
-                        buttons[k] = st.button(k)
-                    with info_col:
-                        st.write(
-                            "%0.1f%% response rate"
-                            % (100.0 * (1.0 - (v.get("", 0.0) / len(df))))
-                        )
-                st.subheader("Categorical columns:")
-                st.write(
-                    "\n".join(
-                        [
-                            "- %s [%d different values]" % (c, len(v))
-                            for c, v in categories.items()
-                        ]
+    show_import_tab(import_tab, csv_file_df)
+    
+    if csv_file_df is not None:
+        with st.spinner():
+            df = csv_file_df
+            categories, text_response_columns = parse_csv.infer_column_types(df)
+
+        with summary_tab:
+            st.write(
+                "Processed **%d** responses with **%d** text response questions and **%d** categorical questions"
+                % (len(df), len(text_response_columns), len(categories))
+            )
+            st.write(
+                "Click a text response button below to analyze the results for a specific question."
+            )
+            st.subheader("Text response columns:")
+            buttons = {}
+            for k, v in text_response_columns.items():
+                btn_col, info_col = st.columns(2)
+                with btn_col:
+                    buttons[k] = st.button(k)
+                with info_col:
+                    st.write(
+                        "%0.1f%% response rate"
+                        % (100.0 * (1.0 - (v.get("", 0.0) / len(df))))
                     )
+            st.subheader("Categorical columns:")
+            st.write(
+                "\n".join(
+                    [
+                        "- %s [%d different values]" % (c, len(v))
+                        for c, v in categories.items()
+                    ]
                 )
-            for k, b in buttons.items():
-                if b:
-                    columns_to_analyze = [k]
-                    st.session_state["analyze"] = columns_to_analyze
-                    st.experimental_rerun()
+            )
 
-            if "analyze" in st.session_state:
-                columns_to_analyze = st.session_state["analyze"]
+        for k, b in buttons.items():
+            if b:
+                columns_to_analyze = [k]
+                st.session_state["analyze"] = columns_to_analyze
+                st.experimental_rerun()
+                
 
     if columns_to_analyze:
         with analyze_tab:
@@ -134,7 +143,7 @@ def streamlit_app():
                 with st.expander(
                     "Auto-generated summary of the responses", expanded=True
                 ):
-                    res = gpt3_model.get_summary(df, columns_to_analyze[0])
+                    res = _CONFIG["llm"].get_summary(df, columns_to_analyze[0])
                     st.write("**%s** %s" % (res["instructions"], res["answer"]))
 
             # Compute embeddings
