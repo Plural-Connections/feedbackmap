@@ -1,12 +1,13 @@
 #!/user/bin/env python3
 
-from collections import defaultdict
-import re
-
 """
 Logic related to understanding the survey CSVs;  no streamlit in here.
 """
 
+from collections import defaultdict
+import re
+
+import pandas as pd
 
 # Do not treat these columns in the input as either categorical or free-response questions
 _SKIP_COLUMNS = ["Timestamp"]
@@ -15,6 +16,9 @@ _SKIP_COLUMNS = ["Timestamp"]
 # consider it to be a free-response text field
 _MAX_FRACTION_FOR_CATEGORICAL = 0.2
 
+def process_input_file(uploaded_file):
+    df = pd.read_csv(uploaded_file, dtype=str).fillna("")
+    return df
 
 def infer_column_types(df):
     categories = {}  # column -> val_dict

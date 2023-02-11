@@ -54,7 +54,7 @@ def make_scatterplot_base(data, color_key):
     # color = altair.condition(altair.datum.GroupForLegend == '-1', altair.value('grey'), color)
 
     chart = (
-        altair.Chart(df, height=400, width=800)
+        altair.Chart(df, height=400, width=1200)
         .mark_circle(size=60, opacity=0.8)
         .encode(
             x=altair.X("x", axis=None, scale=altair.Scale(zero=False)),
