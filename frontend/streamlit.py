@@ -17,6 +17,7 @@ _CONFIG = {}
 _CLUSTER_OPTION_TEXT = "[Auto-pick colors based on the topic of the response text]"
 _MOCK_MODE = False  # Set to true to run without transformers, spacy, or gpt-3
 _TITLE = "Feedback Map"
+_CATEGORICAL_QUESTIONS_BGCOLOR = "lightyellow"
 
 
 @st.cache_resource
@@ -80,7 +81,7 @@ def show_summary_tab(df, text_response_columns, categories):
     st.write(
         "Click a text response button below to analyze the results for a specific question."
     )
-    st.subheader("Text response columns:")
+    st.subheader("Text response questions:")
     buttons = {}
     for k, v in text_response_columns.items():
         btn_col, info_col = st.columns(2)
@@ -90,12 +91,20 @@ def show_summary_tab(df, text_response_columns, categories):
             st.write(
                 "%0.1f%% response rate" % (100.0 * (1.0 - (v.get("", 0.0) / len(df))))
             )
-    st.subheader("Categorical columns:")
-    st.write(
-        "\n".join(
-            ["- %s [%d different values]" % (c, len(v)) for c, v in categories.items()]
-        )
-    )
+    st.subheader("Categorical questions:")
+    for k, v in categories.items():
+        q_col, info_col = st.columns(2)
+        with q_col:
+            st.markdown(
+                '<p style="background-color:%s; border-radius: 5px; padding:10px">%s</p>'
+                % (_CATEGORICAL_QUESTIONS_BGCOLOR, k),
+                unsafe_allow_html=True,
+            )
+        with info_col:
+            st.write(
+                "%d different values\\\n%0.2f selections per response"
+                % (len(v), sum(v.values()) / len(df))
+            )
 
     for k, b in buttons.items():
         if b:
