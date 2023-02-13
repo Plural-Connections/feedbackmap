@@ -1,3 +1,6 @@
+
+from collections import defaultdict
+
 import hdbscan
 import pandas as pd
 import streamlit as st
@@ -28,6 +31,7 @@ def embed_responses(df, q):
 
     return all_sentences, all_umap_emb, parent_records, all_embeddings
 
+@st.cache_data(persist=True)
 def cluster_data(full_embs):
     mid_umap_embs = um.UMAP(n_components=50, metric="euclidean").fit_transform(
         full_embs
@@ -36,7 +40,7 @@ def cluster_data(full_embs):
     clusterer.fit(mid_umap_embs)    
     return list(clusterer.labels_)
 
-def get_color_key_of_interest(categories):
+def get_grouping_key_of_interest(categories):
     res = st.selectbox(
         "Group the points based on the respondent's answer to:",
         [app_config.CLUSTER_OPTION_TEXT] + list(categories.keys()),
@@ -53,12 +57,16 @@ def run(columns_to_analyze, df, categories):
         overall_summary_expander = st.expander(
             "Auto-generated summary of the answers", expanded=True
         )
-        color_key = get_color_key_of_interest(categories)
+        grouping_key = get_grouping_key_of_interest(categories)
+
+        # If CLUSTER_OPTION_TEXT is selected, we'll re-set this later.
+        category_values = list(categories.get(grouping_key, {}).keys())
+
         scatterplot_expander = st.expander(
             "Topic scatterplot of the sentences in the answers to \"%s\"" % (columns_to_analyze[0]),
             expanded=True
         )
-        value_table_expander = st.expander("Summary table, broken out by answer to \"%s\"" % (color_key), expanded=True)
+        value_table_expander = st.expander("Summary table, broken out by answer to \"%s\"" % (grouping_key), expanded=True)
 
         # Overall summary
         with overall_summary_expander:
@@ -81,26 +89,34 @@ def run(columns_to_analyze, df, categories):
                             for i in range(len(sents))
                         ]
                     )
-                if color_key == app_config.CLUSTER_OPTION_TEXT:
-                    cluster_labels = cluster_data(full_embs)
+                if grouping_key == app_config.CLUSTER_OPTION_TEXT:
+                    cluster_result = cluster_data(full_embs)
+                    cluster_label_counts = defaultdict(lambda: 0)
+                    cluster_labels = ["Cluster %s" % (
+                        cluster_result[i]) for i in range(len(cluster_result))]
                     for i, x in enumerate(data):
-                        x["rec"][app_config.CLUSTER_OPTION_TEXT] = "Cluster %s" % (
-                            cluster_labels[i]
-                        )
+                        cluster_label_counts[cluster_labels[i]] += 1
+                        x["rec"][app_config.CLUSTER_OPTION_TEXT] = cluster_labels[i]
+
                     # Rewrite df to be based on the sentences, rather than responses
                     df = pd.DataFrame([x["rec"] for x in data])
-                scatterplot = charts.make_scatterplot_base(data, color_key)
+                    category_values = list(cluster_label_counts.keys())
+                    categories[app_config.CLUSTER_OPTION_TEXT] = dict(cluster_label_counts)
+                scatterplot = charts.make_scatterplot_base(data, grouping_key)
                 st.altair_chart(scatterplot)
+
+        # Sort category values by popularity
+        category_values.sort(key = lambda x: categories[grouping_key][x], reverse=True)
 
         # Per-value summary table
         with value_table_expander:
             table = []
-            values = list(categories.get(color_key, {}).keys())
             summaries = app_config.CONFIG["llm"].get_summaries(
                 df,
                 columns_to_analyze[0],
-                color_key,
-                values[: app_config.MAX_VALUES_TO_SUMMARIZE],
+                grouping_key,
+                category_values[: app_config.MAX_VALUES_TO_SUMMARIZE],
+                short_prompt=True
             )
 
             overall_nonempty_rate = (
@@ -123,7 +139,7 @@ def run(columns_to_analyze, df, categories):
             st.markdown(hide_table_row_index, unsafe_allow_html=True)
 
             for i, res in enumerate(summaries):
-                num_responses = categories.get(color_key, {}).get(values[i], 0)
+                num_responses = categories.get(grouping_key, {}).get(category_values[i], 0)
                 nonempty_rate = 100.0 * res["nonempty_responses"] / num_responses
                 nonempty_rate_color = (
                     (nonempty_rate > overall_nonempty_rate) and "green" or "red"
@@ -131,7 +147,7 @@ def run(columns_to_analyze, df, categories):
                 nonempty_rate = str(round(nonempty_rate, 1)) + "%"
                 table.append(
                     {
-                        'Answer to "%s"' % (color_key): values[i],
+                        'Answer to "%s"' % (grouping_key): category_values[i],
                         "Number of respondees": num_responses,
                         'Auto-generated summary for their answers to "%s"'
                         % (columns_to_analyze[0]): res["answer"],

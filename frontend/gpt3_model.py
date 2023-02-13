@@ -3,6 +3,7 @@
 import openai
 import streamlit as st
 
+import re
 import time
 from itertools import repeat
 from multiprocessing import Pool
@@ -18,8 +19,8 @@ class OfflineModel:
         df = df[df[column].str.len() > 0]
         if facet_column:
             df = df[
-                df[facet_column].str.contains(facet_val, regex=False)
-            ]  # should be contains, not equals.  match regexp?
+                df[facet_column].str.contains('(^|;)' + re.escape(facet_val) + '($|;)')
+            ]
         return df[column]
 
     def canned_answer(self, examples):
@@ -32,7 +33,7 @@ class OfflineModel:
                 len(examples)
             )
 
-    def get_summary(self, df, column, facet_column=None, facet_val=None):
+    def get_summary(self, df, column, facet_column=None, facet_val=None, short_prompt=False):
         examples = self.prompt_examples(df, column, facet_column, facet_val)
         return {
             "instructions": "No GPT-3 model available",
@@ -41,16 +42,19 @@ class OfflineModel:
             "sample_size": len(examples),
         }
 
-    def get_summaries(self, df, question_column, facet_column, facet_values):
+    def get_summaries(self, df, question_column, facet_column, facet_values, short_prompt=False):
         return [
             self.get_summary(df, question_column, facet_column, x) for x in facet_values
         ]
 
 
 class LiveGptModel(OfflineModel):
-    def get_summary(self, df, column, facet_column=None, facet_val=None):
+    def get_summary(self, df, column, facet_column=None, facet_val=None, short_prompt=False):
         preamble = 'Here are some responses to the question "%s"' % (column)
-        instructions = "Briefly summarize these responses."
+        if short_prompt:
+            instructions = "What 4 words describes these responses?"
+        else:
+            instructions = "Briefly summarize these responses."
         nonempty_responses = self.prompt_examples(df, column, facet_column, facet_val)
         examples = nonempty_responses.sample(
             min(_SAMPLE_SIZE, len(nonempty_responses)), random_state=42
@@ -75,12 +79,12 @@ class LiveGptModel(OfflineModel):
             "sample_size": len(examples),
         }
 
-    def get_summaries(self, df, question_column, facet_column, facet_values):
+    def get_summaries(self, df, question_column, facet_column, facet_values, short_prompt=False):
         """Get a summary for each value of a facet."""
         if True:
             # Serial
             return [
-                self.get_summary(df, question_column, facet_column, x)
+                self.get_summary(df, question_column, facet_column, x, short_prompt=short_prompt)
                 for x in facet_values
             ]
         else:
@@ -94,6 +98,7 @@ class LiveGptModel(OfflineModel):
                             repeat(question_column),
                             repeat(facet_column),
                             facet_values,
+                            repeat(short_prompt)
                         ),
                     )
                 )
