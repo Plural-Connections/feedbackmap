@@ -18,7 +18,7 @@ class OfflineModel:
         df = df[df[column].str.len() > 0]
         if facet_column:
             df = df[
-                df[facet_column].str.contains(facet_val)
+                df[facet_column].str.contains(facet_val, regex=False)
             ]  # should be contains, not equals.  match regexp?
         return df[column]
 

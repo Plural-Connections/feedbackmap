@@ -28,6 +28,13 @@ def embed_responses(df, q):
 
     return all_sentences, all_umap_emb, parent_records, all_embeddings
 
+def cluster_data(full_embs):
+    mid_umap_embs = um.UMAP(n_components=50, metric="euclidean").fit_transform(
+        full_embs
+    )
+    clusterer = hdbscan.HDBSCAN(min_cluster_size=5)
+    clusterer.fit(mid_umap_embs)    
+    return list(clusterer.labels_)
 
 def get_color_key_of_interest(categories):
     res = st.selectbox(
@@ -38,20 +45,20 @@ def get_color_key_of_interest(categories):
     )
     return res
 
-
 def run(columns_to_analyze, df, categories):
     st.subheader(", ".join(columns_to_analyze))
     # Compute GPT3-based summary
     with st.spinner():
         # Layout expanders
         overall_summary_expander = st.expander(
-            "Auto-generated summary of the responses", expanded=True
+            "Auto-generated summary of the answers", expanded=True
         )
         color_key = get_color_key_of_interest(categories)
         scatterplot_expander = st.expander(
-            "Topic scatterplot of the sentences in the responses", expanded=True
+            "Topic scatterplot of the sentences in the answers to \"%s\"" % (columns_to_analyze[0]),
+            expanded=True
         )
-        value_table_expander = st.expander("Summary of values", expanded=True)
+        value_table_expander = st.expander("Summary table, broken out by answer to \"%s\"" % (color_key), expanded=True)
 
         # Overall summary
         with overall_summary_expander:
@@ -75,13 +82,13 @@ def run(columns_to_analyze, df, categories):
                         ]
                     )
                 if color_key == app_config.CLUSTER_OPTION_TEXT:
-                    clusterer = hdbscan.HDBSCAN(min_cluster_size=3)
-                    clusterer.fit(full_embs)
-                    data = data.copy()  # Copy, to avoid ST cache warning
+                    cluster_labels = cluster_data(full_embs)
                     for i, x in enumerate(data):
-                        x["rec"][_CLUSTER_OPTION_TEXT] = "Cluster %s" % (
-                            str(clusterer.labels_[i])
+                        x["rec"][app_config.CLUSTER_OPTION_TEXT] = "Cluster %s" % (
+                            cluster_labels[i]
                         )
+                    # Rewrite df to be based on the sentences, rather than responses
+                    df = pd.DataFrame([x["rec"] for x in data])
                 scatterplot = charts.make_scatterplot_base(data, color_key)
                 st.altair_chart(scatterplot)
 
@@ -126,7 +133,7 @@ def run(columns_to_analyze, df, categories):
                     {
                         'Answer to "%s"' % (color_key): values[i],
                         "Number of respondees": num_responses,
-                        'Auto-generated summary for their answer to "%s"'
+                        'Auto-generated summary for their answers to "%s"'
                         % (columns_to_analyze[0]): res["answer"],
                         "Response rate for that question": nonempty_rate,
                     }
