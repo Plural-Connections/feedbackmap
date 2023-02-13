@@ -16,9 +16,11 @@ _SKIP_COLUMNS = ["Timestamp"]
 # consider it to be a free-response text field
 _MAX_FRACTION_FOR_CATEGORICAL = 0.2
 
+
 def process_input_file(uploaded_file):
     df = pd.read_csv(uploaded_file, dtype=str).fillna("")
     return df
+
 
 def infer_column_types(df):
     categories = {}  # column -> val_dict

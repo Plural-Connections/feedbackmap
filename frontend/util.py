@@ -1,5 +1,5 @@
-
 import streamlit as st
+
 
 def include_markdown(fname, replace={}, highlight_numbers=False):
     text = open("static/" + fname + ".md").read()

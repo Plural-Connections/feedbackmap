@@ -80,7 +80,7 @@ def show_summary_tab(df, text_response_columns, categories):
     st.write(
         "Click a text response button below to analyze the results for a specific question."
     )
-    st.subheader("Text response columns:")
+    st.subheader("Text response columns (click to):")
     buttons = {}
     for k, v in text_response_columns.items():
         btn_col, info_col = st.columns(2)

@@ -6,20 +6,25 @@ import openai
 
 _SAMPLE_SIZE = 50
 
+
 def get_config(mock_mode):
     return {"llm": mock_mode and MockGptModel() or LiveGptModel()}
 
+
 class MockGptModel:
     def get_summary(self, df, column):
-        return {"instructions": "No GPT-3 model available",
-                "answer": "No GPT-3 model available"}
-    
+        return {
+            "instructions": "No GPT-3 model available",
+            "answer": "No GPT-3 model available",
+        }
+
+
 class LiveGptModel:
     def __init__(self):
         pass
 
     def get_summary(self, df, column):
-        preamble = "Here are some responses to the question \"%s\"" % (column)
+        preamble = 'Here are some responses to the question "%s"' % (column)
         instructions = "Briefly summarize these responses."
         # TODO:  nonnull/nonempty only
         df = df[df[column].str.len() > 0]
