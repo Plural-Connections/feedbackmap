@@ -46,28 +46,36 @@ def make_scatterplot_base(data, color_key):
     sorted_values = list(legend_values.keys())
     sorted_values.sort(key=lambda x: legend_values[x], reverse=True)
 
-    selection = altair.selection_multi(fields=['GroupForLegend'])
+    selection = altair.selection_multi(fields=["GroupForLegend"])
     coloring_scheme = altair.Color(
-        "GroupForLegend", type="nominal", scale=altair.Scale(scheme="tableau20"), sort=sorted_values)
-    color = altair.condition(selection, coloring_scheme, altair.value('white'))
+        "GroupForLegend",
+        type="nominal",
+        scale=altair.Scale(scheme="tableau20"),
+        sort=sorted_values,
+    )
+    color = altair.condition(selection, coloring_scheme, altair.value("white"))
     # TODO.  Ensure "unclustered" is grey.  Below doesn't work.
     # color = altair.condition(altair.datum.GroupForLegend == '-1', altair.value('grey'), color)
 
     chart = (
-        altair.Chart(df, height=400, width=1200)
-        .mark_circle(size=60, opacity=0.8)
-        .encode(
-            x=altair.X("x", axis=None, scale=altair.Scale(zero=False)),
-            y=altair.Y("y", axis=None, scale=altair.Scale(zero=False)),
-            color=color,
-            tooltip=["Response", "Groups"],
+        (
+            altair.Chart(df, height=400, width=1200)
+            .mark_circle(size=80, opacity=1.0)
+            .encode(
+                x=altair.X("x", axis=None, scale=altair.Scale(zero=False)),
+                y=altair.Y("y", axis=None, scale=altair.Scale(zero=False)),
+                color=color,
+                tooltip=["Response", "Groups"],
+            )
+            .interactive()
+            .configure_view(strokeOpacity=1)
         )
-        .interactive()
-        .configure_view(strokeOpacity=1)
-    ).configure_legend(
-        orient="right",
-        title=None,
-        labelLimit=300,
-        cornerRadius=10,
-    ).add_selection(selection)
+        .configure_legend(
+            orient="right",
+            title=None,
+            labelLimit=300,
+            cornerRadius=10,
+        )
+        .add_selection(selection)
+    )
     return chart
