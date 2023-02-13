@@ -72,6 +72,8 @@ def show_import_tab(current_csv_file_df):
             if "analyze" in st.session_state:
                 del st.session_state["analyze"]
             st.experimental_rerun()  # TODO: why doesn't it open 1st tab here?
+    with st.expander("About Feedback Map", expanded=False):
+        util.include_markdown("about")
 
 
 def show_summary_tab(df, text_response_columns, categories):
@@ -198,12 +200,12 @@ def streamlit_app():
     with tab_placeholder:
         if "analyze" in st.session_state:
             analyze_tab, summary_tab, import_tab = st.tabs(
-                ["Response analysis", "Summary", "Import file"]
+                ["Response analysis", "Summary", "Welcome"]
             )
         elif "uploaded" in st.session_state:
-            summary_tab, import_tab = st.tabs(["Summary", "Import file"])
+            summary_tab, import_tab = st.tabs(["Summary", "Welcome"])
         else:
-            import_tab = st.tabs(["Import file"])[0]
+            import_tab = st.tabs(["Welcome"])[0]
 
     with import_tab:
         show_import_tab(csv_file_df)
