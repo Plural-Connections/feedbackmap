@@ -18,15 +18,15 @@ class OfflineModel:
         df = df[df[column].str.len() > 0]
         if facet_column:
             df = df[
-                df[facet_column] == facet_val
+                df[facet_column].str.contains(facet_val)
             ]  # should be contains, not equals.  match regexp?
         return df[column]
 
     def canned_answer(self, examples):
         if len(examples) == 0:
-            return "There were no matching responses."
+            return "None of the respondees answered this question."
         elif len(examples) == 1:
-            return 'There was just one response: "%s"' % (list(examples)[0])
+            return 'There was just one nonempty answer: "%s"' % (list(examples)[0])
         else:
             return "No GPT-3 model available to summarize the %d answers" % (
                 len(examples)
