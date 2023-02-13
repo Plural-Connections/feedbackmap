@@ -17,6 +17,8 @@ _CONFIG = {}
 _CLUSTER_OPTION_TEXT = "[Auto-pick colors based on the topic of the response text]"
 _MOCK_MODE = False  # Set to true to run without transformers, spacy, or gpt-3
 _TITLE = "Feedback Map"
+_CATEGORICAL_QUESTIONS_BGCOLOR = "lightyellow"
+_MAX_VALUES_TO_SUMMARIZE = 10
 
 
 @st.cache_resource
@@ -28,7 +30,7 @@ def get_config(mock_mode):
 
 def get_color_key_of_interest(categories):
     res = st.selectbox(
-        "Color the points based on the respondent's answer to:",
+        "Group the points based on the respondent's answer to:",
         [_CLUSTER_OPTION_TEXT] + list(categories.keys()),
         format_func=lambda x: str(x),
         index=1,
@@ -80,7 +82,7 @@ def show_summary_tab(df, text_response_columns, categories):
     st.write(
         "Click a text response button below to analyze the results for a specific question."
     )
-    st.subheader("Text response columns (click to):")
+    st.subheader("Text response questions:")
     buttons = {}
     for k, v in text_response_columns.items():
         btn_col, info_col = st.columns(2)
@@ -90,12 +92,20 @@ def show_summary_tab(df, text_response_columns, categories):
             st.write(
                 "%0.1f%% response rate" % (100.0 * (1.0 - (v.get("", 0.0) / len(df))))
             )
-    st.subheader("Categorical columns:")
-    st.write(
-        "\n".join(
-            ["- %s [%d different values]" % (c, len(v)) for c, v in categories.items()]
-        )
-    )
+    st.subheader("Categorical questions:")
+    for k, v in categories.items():
+        q_col, info_col = st.columns(2)
+        with q_col:
+            st.markdown(
+                '<p style="background-color:%s; border-radius: 5px; padding:10px">%s</p>'
+                % (_CATEGORICAL_QUESTIONS_BGCOLOR, k),
+                unsafe_allow_html=True,
+            )
+        with info_col:
+            st.write(
+                "%d different values\\\n%0.2f selections per response"
+                % (len(v), sum(v.values()) / len(df))
+            )
 
     for k, b in buttons.items():
         if b:
@@ -107,27 +117,37 @@ def show_analysis_tab(columns_to_analyze, df, categories):
     st.subheader(", ".join(columns_to_analyze))
     # Compute GPT3-based summary
     with st.spinner():
-        with st.expander("Auto-generated summary of the responses", expanded=True):
+        # Layout expanders
+        overall_summary_expander = st.expander(
+            "Auto-generated summary of the responses", expanded=True
+        )
+        color_key = get_color_key_of_interest(categories)
+        scatterplot_exapander = st.expander(
+            "Topic scatterplot of the responses", expanded=True
+        )
+        value_table_exapander = st.expander("Summary of values", expanded=True)
+
+        # Overall summary
+        with overall_summary_expander:
             res = _CONFIG["llm"].get_summary(df, columns_to_analyze[0])
             st.write("**%s** %s" % (res["instructions"], res["answer"]))
 
-        # Compute embeddings
-        with st.spinner():
-            data = []
-            for q in columns_to_analyze:
-                sents, embs, parent_records, full_embs = embed_responses(df, q)
-                data.extend(
-                    [
-                        {
-                            "sentence": sents[i],
-                            "vec": embs[i],
-                            "rec": parent_records[i],
-                        }
-                        for i in range(len(sents))
-                    ]
-                )
-            with st.expander("Topic scatterplot of the responses", expanded=True):
-                color_key = get_color_key_of_interest(categories)
+        # Compute embeddings and plot scatterplot
+        with scatterplot_exapander:
+            with st.spinner():
+                data = []
+                for q in columns_to_analyze:
+                    sents, embs, parent_records, full_embs = embed_responses(df, q)
+                    data.extend(
+                        [
+                            {
+                                "sentence": sents[i],
+                                "vec": embs[i],
+                                "rec": parent_records[i],
+                            }
+                            for i in range(len(sents))
+                        ]
+                    )
                 if color_key == _CLUSTER_OPTION_TEXT:
                     clusterer = hdbscan.HDBSCAN(min_cluster_size=3)
                     clusterer.fit(full_embs)
@@ -138,6 +158,27 @@ def show_analysis_tab(columns_to_analyze, df, categories):
                         )
                 scatterplot = charts.make_scatterplot_base(data, color_key)
                 st.altair_chart(scatterplot)
+
+        # Per-value summary table
+        with value_table_exapander:
+            table = []
+            values = list(categories.get(color_key, {}).keys())
+            summaries = _CONFIG["llm"].get_summaries(
+                df, columns_to_analyze[0], color_key, values[:_MAX_VALUES_TO_SUMMARIZE]
+            )
+            for i, res in enumerate(summaries):
+                num_responses = categories.get(color_key, {}).get(values[i], 0)
+                table.append(
+                    {
+                        'Answer to "%s"' % (color_key): values[i],
+                        "Number of responses": num_responses,
+                        'Auto-generated summary for their answer to "%s"'
+                        % (columns_to_analyze[0]): res["answer"],
+                        "Nonempty rate": "%0.1f%%"
+                        % (100.0 * res["nonempty_responses"] / num_responses),
+                    }
+                )
+            st.table(table)
 
 
 def streamlit_app():
