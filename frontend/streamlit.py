@@ -36,12 +36,12 @@ def streamlit_app():
     with tab_placeholder:
         if "analyze" in st.session_state:
             analyze_tab_st, summary_tab_st, import_tab_st = st.tabs(
-                ["Response analysis", "Summary", "Import file"]
+                ["Response analysis", "Summary", "Welcome"]
             )
         elif "uploaded" in st.session_state:
-            summary_tab_st, import_tab_st = st.tabs(["Summary", "Import file"])
+            summary_tab_st, import_tab_st = st.tabs(["Summary", "Welcome"])
         else:
-            import_tab_st = st.tabs(["Import file"])[0]
+            import_tab_st = st.tabs(["Welcome"])[0]
 
     with import_tab_st:
         import_tab.run(csv_file_df)
