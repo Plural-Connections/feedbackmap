@@ -4,7 +4,7 @@ Feedback Map is a project by technologists at Northeastern University's [Plural 
 Feedback Map is committed to preserving the privacy and confidentiality of its users and the data they use the tool to analyze.  Below are some details on how it seeks to achieve this.
 
 #### Data Collection and Usage
-Feedback Map does not store the survey data users upload to it; it simply processes it during the user's session.  Navigating away from or closing the browser page containing Feedback Map also deletes the data.  However, Feedback Map does collect data on how users use the tool.  These collected fields include:
+Feedback Map does not save a copy of users' uploaded CSV or use it for any purposes beyond supporting their exploration of it.  However, Feedback Map does collect data on how users use the tool.  These collected fields include:
 
 - Clicks and other engagement with the tool
 - Time spent engaging with the tool
