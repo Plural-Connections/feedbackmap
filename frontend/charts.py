@@ -13,20 +13,20 @@ def make_scatterplot_base(data, color_key):
     value_counts = defaultdict(lambda: 0)
     items = []
     for x in data:
-        answer = x["rec"].get(color_key, "Unknown")
-        answer_values = parse_csv.split_values(answer)
-        for v in answer_values:
+        categories = x["rec"].get(color_key, "Unknown")
+        categories_values = parse_csv.split_values(categories)
+        for v in categories_values:
             value_counts[v] += 1
         items.extend(
             [
                 {
                     "ColorGroup": group_value,
-                    "Groups": answer,
+                    "Categories": categories.replace(";", "; "),
                     "x": x["vec"][0],
                     "y": x["vec"][1],
-                    "Response": x["sentence"],
+                    "Answer": x["sentence"],
                 }
-                for group_value in answer_values
+                for group_value in categories_values
             ]
         )
 
@@ -65,7 +65,7 @@ def make_scatterplot_base(data, color_key):
                 x=altair.X("x", axis=None, scale=altair.Scale(zero=False)),
                 y=altair.Y("y", axis=None, scale=altair.Scale(zero=False)),
                 color=color,
-                tooltip=["Response", "Groups"],
+                tooltip=["Answer", "Categories"],
             )
             .interactive()
             .configure_view(strokeOpacity=1)
