@@ -1,0 +1,8 @@
+altair==4.2.2
+hdbscan==0.8.29
+openai==0.26.5
+pandas==1.3.5
+sentence-transformers==2.2.2
+spacy==3.5.0
+streamlit==1.18.1
+umap-learn==0.5.3
