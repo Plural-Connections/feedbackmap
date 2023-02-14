@@ -21,7 +21,7 @@ def embed_responses(df, q):
         for sent in doc.sents:
             cleaned_sent = sent.text.strip()
             if cleaned_sent:
-                parent_records.append(row)
+                parent_records.append(dict(row))
                 all_sentences.append(cleaned_sent)
     all_embeddings = app_config.CONFIG["model"].encode(all_sentences)
     # UMAP everything
@@ -123,7 +123,7 @@ def run(columns_to_analyze, df, categories):
                 100.0 * (df[columns_to_analyze[0]] != "").sum() / len(df)
             )
             nonempty_color = (
-                lambda val: float(val.replace("%", "")) > overall_nonempty_rate
+                lambda val: float(val.replace("%", "")) >= overall_nonempty_rate
                 and "background-color: lightgreen"
                 or "background-color: pink"
             )

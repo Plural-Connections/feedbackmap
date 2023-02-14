@@ -40,6 +40,8 @@ class OfflineModel:
             "answer": self.canned_answer(examples),
             "nonempty_responses": len(examples),
             "sample_size": len(examples),
+            "facet_column": facet_column,
+            "facet_val": facet_val,
         }
 
     def get_summaries(self, df, question_column, facet_column, facet_values, short_prompt=False):
@@ -77,6 +79,8 @@ class LiveGptModel(OfflineModel):
             "answer": answer,
             "nonempty_responses": len(nonempty_responses),
             "sample_size": len(examples),
+            "facet_column": facet_column,
+            "facet_val": facet_val,
         }
 
     def get_summaries(self, df, question_column, facet_column, facet_values, short_prompt=False):
