@@ -8,6 +8,8 @@ import time
 from itertools import repeat
 from multiprocessing import Pool
 
+import app_config
+
 _SAMPLE_SIZE = 50
 
 # For parallelizing value-specific summary queries.  Check GPT-3 API rate limit.
@@ -56,13 +58,13 @@ class OfflineModel:
 
 class LiveGptModel(OfflineModel):
     def get_summary(
-        self, df, column, facet_column=None, facet_val=None, short_prompt=False
+            self, df, column, facet_column=None, facet_val=None, short_prompt=False
     ):
         preamble = 'Here are some responses to the question "%s"' % (column)
         if short_prompt:
-            instructions = "What 4 words describes these responses?"
+            instructions = app_config.GPT3_PROMPT_SHORT
         else:
-            instructions = "Briefly summarize these responses."
+            instructions = app_config.GPT3_PROMPT_LONG
         nonempty_responses = self.prompt_examples(df, column, facet_column, facet_val)
         examples = nonempty_responses.sample(
             min(_SAMPLE_SIZE, len(nonempty_responses)), random_state=42
@@ -77,7 +79,7 @@ class LiveGptModel(OfflineModel):
                 + instructions
                 + "\n"
             )
-            response = run_completion_query(prompt)
+            response = run_completion_query(prompt, model = (short_prompt and app_config.GPT3_MODEL_SHORT or app_config.GPT3_MODEL_LONG))
             answer = set([c["text"] for c in response["choices"]])
             answer = "\n".join(list(answer))
         return {
@@ -118,17 +120,17 @@ class LiveGptModel(OfflineModel):
                 )
 
 
-def get_config(mock_mode):
-    return {"llm": mock_mode and OfflineModel() or LiveGptModel()}
+def get_config():
+    return {"llm": app_config.USE_GPT3 and LiveGptModel() or OfflineModel()}
 
 
 @st.cache_data(persist=True)
-def run_completion_query(prompt, num_to_generate=1):
+def run_completion_query(prompt, model="text-davinci-003", num_to_generate=1):
     tries = 0
     while tries < 3:
         try:
             response = openai.Completion.create(
-                model="text-davinci-003",
+                model=model,
                 prompt=prompt,
                 temperature=0.0,
                 n=num_to_generate,
