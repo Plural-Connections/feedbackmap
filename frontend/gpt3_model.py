@@ -19,7 +19,7 @@ class OfflineModel:
         df = df[df[column].str.len() > 0]
         if facet_column:
             df = df[
-                df[facet_column].str.contains('(^|;)' + re.escape(facet_val) + '($|;)')
+                df[facet_column].str.contains("(^|;)" + re.escape(facet_val) + "($|;)")
             ]
         return df[column]
 
@@ -33,7 +33,9 @@ class OfflineModel:
                 len(examples)
             )
 
-    def get_summary(self, df, column, facet_column=None, facet_val=None, short_prompt=False):
+    def get_summary(
+        self, df, column, facet_column=None, facet_val=None, short_prompt=False
+    ):
         examples = self.prompt_examples(df, column, facet_column, facet_val)
         return {
             "instructions": "No GPT-3 model available",
@@ -44,14 +46,18 @@ class OfflineModel:
             "facet_val": facet_val,
         }
 
-    def get_summaries(self, df, question_column, facet_column, facet_values, short_prompt=False):
+    def get_summaries(
+        self, df, question_column, facet_column, facet_values, short_prompt=False
+    ):
         return [
             self.get_summary(df, question_column, facet_column, x) for x in facet_values
         ]
 
 
 class LiveGptModel(OfflineModel):
-    def get_summary(self, df, column, facet_column=None, facet_val=None, short_prompt=False):
+    def get_summary(
+        self, df, column, facet_column=None, facet_val=None, short_prompt=False
+    ):
         preamble = 'Here are some responses to the question "%s"' % (column)
         if short_prompt:
             instructions = "What 4 words describes these responses?"
@@ -83,12 +89,16 @@ class LiveGptModel(OfflineModel):
             "facet_val": facet_val,
         }
 
-    def get_summaries(self, df, question_column, facet_column, facet_values, short_prompt=False):
+    def get_summaries(
+        self, df, question_column, facet_column, facet_values, short_prompt=False
+    ):
         """Get a summary for each value of a facet."""
         if True:
             # Serial
             return [
-                self.get_summary(df, question_column, facet_column, x, short_prompt=short_prompt)
+                self.get_summary(
+                    df, question_column, facet_column, x, short_prompt=short_prompt
+                )
                 for x in facet_values
             ]
         else:
@@ -102,7 +112,7 @@ class LiveGptModel(OfflineModel):
                             repeat(question_column),
                             repeat(facet_column),
                             facet_values,
-                            repeat(short_prompt)
+                            repeat(short_prompt),
                         ),
                     )
                 )
