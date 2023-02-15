@@ -15,7 +15,7 @@ import parse_csv
 @st.cache_resource
 def get_config(mock_mode):
     config = local_models.get_config(mock_mode)
-    config.update(gpt3_model.get_config(mock_mode))
+    config.update(gpt3_model.get_config())
     return config
 
 
