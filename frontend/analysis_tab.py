@@ -33,10 +33,10 @@ def embed_responses(df, q):
 
 @st.cache_data(persist=True)
 def cluster_data(full_embs):
-    mid_umap_embs = um.UMAP(n_components=min(50, len(full_embs)-1), metric="euclidean").fit_transform(
-        full_embs
-    )
-    clusterer = hdbscan.HDBSCAN(min_cluster_size=min(5, len(full_embs)-1))
+    mid_umap_embs = um.UMAP(
+        n_components=min(50, len(full_embs) - 1), metric="euclidean"
+    ).fit_transform(full_embs)
+    clusterer = hdbscan.HDBSCAN(min_cluster_size=min(5, len(full_embs) - 1))
     clusterer.fit(mid_umap_embs)
     return list(clusterer.labels_)
 
@@ -114,6 +114,12 @@ def run(columns_to_analyze, df, categories):
                     )
                 scatterplot = charts.make_scatterplot_base(data, grouping_key)
                 st.altair_chart(scatterplot)
+            st.markdown(
+                app_config.SURVEY_CSS
+                + '<p class="big-font"><a href="%s" target="_blank">Tell us what you think</a> about Feedback Map!</p>'
+                % (app_config.QUALTRICS_SURVEY_URL),
+                unsafe_allow_html=True,
+            )
 
         # Sort category values by popularity
         category_values.sort(key=lambda x: categories[grouping_key][x], reverse=True)
@@ -170,4 +176,10 @@ def run(columns_to_analyze, df, categories):
                 pd.DataFrame(table).style.applymap(
                     nonempty_color, subset=["Response rate for that question"]
                 )
+            )
+            st.markdown(
+                app_config.SURVEY_CSS
+                + '<p class="big-font"><a href="%s" target="_blank">Tell us what you think</a> about Feedback Map!</p>'
+                % (app_config.QUALTRICS_SURVEY_URL),
+                unsafe_allow_html=True,
             )
