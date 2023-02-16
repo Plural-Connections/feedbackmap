@@ -10,7 +10,7 @@ from multiprocessing import Pool
 
 import app_config
 
-_SAMPLE_SIZE = 50
+_MAX_SAMPLE_SIZE = 50
 
 # For parallelizing value-specific summary queries.  Check GPT-3 API rate limit.
 _NUM_PROCESSES = 10
@@ -60,15 +60,24 @@ class LiveGptModel(OfflineModel):
     def get_summary(
             self, df, column, facet_column=None, facet_val=None, short_prompt=False
     ):
+        model = (short_prompt and app_config.GPT3_MODEL_SHORT or app_config.GPT3_MODEL_LONG)
         preamble = 'Here are some responses to the question "%s"' % (column)
         if short_prompt:
             instructions = app_config.GPT3_PROMPT_SHORT
         else:
             instructions = app_config.GPT3_PROMPT_LONG
         nonempty_responses = self.prompt_examples(df, column, facet_column, facet_val)
-        examples = nonempty_responses.sample(
-            min(_SAMPLE_SIZE, len(nonempty_responses)), random_state=42
-        )
+        max_words = app_config.MAX_TOKENS[model] / 1.3 - len(preamble) - len(instructions)
+
+        examples = None
+
+        max_sample_size = _MAX_SAMPLE_SIZE
+        while (examples is None or len("\n".join(examples).split()) > max_words):
+            examples = nonempty_responses.sample(
+                min(max_sample_size, len(nonempty_responses)), random_state=42
+            )
+            max_sample_size -= 10
+
         if len(examples) <= 1:
             answer = self.canned_answer(examples)
         else:
@@ -79,7 +88,7 @@ class LiveGptModel(OfflineModel):
                 + instructions
                 + "\n"
             )
-            response = run_completion_query(prompt, model = (short_prompt and app_config.GPT3_MODEL_SHORT or app_config.GPT3_MODEL_LONG))
+            response = run_completion_query(prompt, model = model)
             answer = set([c["text"] for c in response["choices"]])
             answer = "\n".join(list(answer))
         return {

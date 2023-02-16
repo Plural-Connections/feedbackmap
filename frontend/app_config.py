@@ -16,7 +16,10 @@ MOCK_MODE = False
 USE_GPT3 = True
 
 GPT3_MODEL_SHORT = "text-curie-001"
-GPT3_PROMPT_SHORT = "What 4 words describes these responses?"
+GPT3_PROMPT_SHORT = "Briefly summarize these responses."
 
 GPT3_MODEL_LONG = "text-davinci-003"
 GPT3_PROMPT_LONG = "Briefly summarize these responses."
+
+# See https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them
+MAX_TOKENS = {"text-curie-001": 2048, "text-davinci-003": 4000}
