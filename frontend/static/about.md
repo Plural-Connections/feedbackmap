@@ -9,7 +9,7 @@ Feedback Map does not store the survey data users upload to it; it simply proces
 - Clicks and other engagement with the tool
 - Time spent engaging with the tool
 
-
+<br/>
 At no point does Feedback Map request personally-identifiable information from users. All collected data will be retained indefinitely, even after users complete their use of the tool.  All data collected by Feedback Map is for the purposes of better-understanding usage patterns in order to inform product improvements.  It may also, in the future, help inform academic research exploring how to design effective civic technologies and other community engagement tools to support progress on matters of local relevance and importance.  Any such research may be published in a wide range of academic and/or mainstream media outlets. All findings will present aggregate and anonymous results.  Users are invited to email [hello@pluralconnections.org](mailto:hello@pluralconnections.org) at any point with questions about research or other findings.   
 
 #### Data Ownership and Sharing
