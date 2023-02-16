@@ -7,7 +7,7 @@ import util
 def run(current_csv_file_df):
     new_csv_file = None
     util.include_markdown("welcome")
-    new_csv_file = st.file_uploader("Upload CSV here.")
+    new_csv_file = st.file_uploader("")
     if new_csv_file:
         try:
             df = parse_csv.process_input_file(new_csv_file)

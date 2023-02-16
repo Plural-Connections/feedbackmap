@@ -43,7 +43,7 @@ def cluster_data(full_embs):
 
 def get_grouping_key_of_interest(categories):
     res = st.selectbox(
-        "Categorize the points based on the respondent's answer to:",
+        "Color points based on responses to a categorical question OR auto-generated cluster labels:",
         [app_config.CLUSTER_OPTION_TEXT] + list(categories.keys()),
         format_func=lambda x: str(x),
         index=min(1, len(categories)),
@@ -57,7 +57,7 @@ def run(columns_to_analyze, df, categories):
     with st.spinner():
         # Layout expanders
         overall_summary_expander = st.expander(
-            "Auto-generated summary of the answers", expanded=True
+            "Auto-generated summary of responses to the above question:", expanded=True
         )
         grouping_key = get_grouping_key_of_interest(categories)
 
@@ -65,19 +65,19 @@ def run(columns_to_analyze, df, categories):
         category_values = list(categories.get(grouping_key, {}).keys())
 
         scatterplot_expander = st.expander(
-            'Topic scatterplot of the sentences in the answers to "%s"'
-            % (columns_to_analyze[0]),
+            "Each dot represents a response sentence from the selected open-ended question.  Dots that are clustered together are likely to have similar meanings.",
             expanded=True,
         )
         value_table_expander = st.expander(
-            'Summary table, broken out by answer to "%s"' % (grouping_key),
+            'Summary of responses broken down by answers to the following categorical question: "%s"'
+            % (grouping_key),
             expanded=True,
         )
 
         # Overall summary
         with overall_summary_expander:
             res = app_config.CONFIG["llm"].get_summary(df, columns_to_analyze[0])
-            st.write("**%s** %s" % (res["instructions"], res["answer"]))
+            st.write("%s" % (res["answer"]))
 
         # Compute embeddings and plot scatterplot
         with scatterplot_expander:
@@ -116,7 +116,7 @@ def run(columns_to_analyze, df, categories):
                 st.altair_chart(scatterplot)
             st.markdown(
                 app_config.SURVEY_CSS
-                + '<p class="big-font"><a href="%s" target="_blank">Tell us what you think</a> about Feedback Map!</p>'
+                + '<p class="big-font">Was this helpful? <a href="%s" target="_blank">Share your feedback on Feedback Map!</p>'
                 % (app_config.QUALTRICS_SURVEY_URL),
                 unsafe_allow_html=True,
             )
@@ -165,7 +165,7 @@ def run(columns_to_analyze, df, categories):
                 nonempty_rate = str(round(nonempty_rate, 1)) + "%"
                 table.append(
                     {
-                        'Answer to "%s"' % (grouping_key): category_values[i],
+                        "Categorical response": category_values[i],
                         "Number of respondees": num_responses,
                         'Auto-generated summary for their answers to "%s"'
                         % (columns_to_analyze[0]): res["answer"],
@@ -179,7 +179,7 @@ def run(columns_to_analyze, df, categories):
             )
             st.markdown(
                 app_config.SURVEY_CSS
-                + '<p class="big-font"><a href="%s" target="_blank">Tell us what you think</a> about Feedback Map!</p>'
+                + '<p class="big-font">Was this helpful? <a href="%s" target="_blank">Share your feedback on Feedback Map!</p>'
                 % (app_config.QUALTRICS_SURVEY_URL),
                 unsafe_allow_html=True,
             )
