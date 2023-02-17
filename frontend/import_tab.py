@@ -20,7 +20,7 @@ def run(current_csv_file_df):
             if "analyze" in st.session_state:
                 del st.session_state["analyze"]
             st.experimental_rerun()  # TODO: why doesn't it open 1st tab here?
-    with st.expander("About Feedback Map", expanded=False):
+    with st.expander("About + Privacy", expanded=False):
         util.include_markdown("about")
     with st.expander("Frequently Asked Questions", expanded=False):
         util.include_markdown("faqs")
