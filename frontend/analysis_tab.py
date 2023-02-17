@@ -46,13 +46,17 @@ def get_grouping_key_of_interest(categories):
         "Categorize the points based on the respondent's answer to:",
         [app_config.CLUSTER_OPTION_TEXT] + list(categories.keys()),
         format_func=lambda x: str(x),
-        index=min(1, len(categories)),
+        index=0
     )
     return res
 
 
 def run(columns_to_analyze, df, categories):
     st.subheader(", ".join(columns_to_analyze))
+    if len(df) > app_config.MAX_ROWS_FOR_ANALYSIS:
+        st.warning("We have sampled %d random rows from the data for the following analysis"
+                   % (app_config.MAX_ROWS_FOR_ANALYSIS))
+        df = df.sample(app_config.MAX_ROWS_FOR_ANALYSIS, random_state=42)
     # Compute GPT3-based summary
     with st.spinner():
         # Layout expanders

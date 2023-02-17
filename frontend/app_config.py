@@ -22,4 +22,8 @@ GPT3_MODEL_LONG = "text-davinci-003"
 GPT3_PROMPT_LONG = "Briefly summarize these responses."
 
 # See https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them
-MAX_TOKENS = {"text-curie-001": 2048, "text-davinci-003": 4000}
+MAX_TOKENS = {"text-curie-001": 2048, "text-davinci-003": 4096}
+
+# The maximum number of rows for the sentence embedding scatterplot.
+# For larger data sets, rows will be randomly sampled to select the data to plot.
+MAX_ROWS_FOR_ANALYSIS = 5000
