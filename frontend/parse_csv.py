@@ -18,7 +18,7 @@ _MAX_FRACTION_FOR_CATEGORICAL = 0.2
 
 
 def process_csv(uploaded_file):
-    df = pd.read_csv(uploaded_file.getvalue(), dtype=str).fillna("")
+    df = pd.read_csv(uploaded_file, dtype=str).fillna("")
     return df
 
 def process_txt(uploaded_file):
