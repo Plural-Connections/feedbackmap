@@ -17,10 +17,20 @@ _SKIP_COLUMNS = ["Timestamp"]
 _MAX_FRACTION_FOR_CATEGORICAL = 0.2
 
 
-def process_input_file(uploaded_file):
+def process_csv(uploaded_file):
     df = pd.read_csv(uploaded_file, dtype=str).fillna("")
     return df
 
+def process_txt(uploaded_file):
+    df = None
+    try:
+        # Try JSONLines
+        df = pd.read_json(uploaded_file.getvalue(), lines=True)
+    except Exception as e:
+        # Try a single column plaintext file
+        df = pd.read_table(uploaded_file.getvalue(),
+                           dtype=str, header=None, names=["Text"]).fillna("")
+    return df
 
 def infer_column_types(df):
     categories = {}  # column -> val_dict

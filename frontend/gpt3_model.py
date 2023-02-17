@@ -67,7 +67,8 @@ class LiveGptModel(OfflineModel):
         else:
             instructions = app_config.GPT3_PROMPT_LONG
         nonempty_responses = self.prompt_examples(df, column, facet_column, facet_val)
-        max_words = app_config.MAX_TOKENS[model] / 1.3 - len(preamble) - len(instructions)
+        # See https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them
+        max_words = app_config.MAX_TOKENS[model] / 1.4 - len(preamble) - len(instructions)
 
         examples = None
 
