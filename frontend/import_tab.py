@@ -6,7 +6,7 @@ import util
 
 def run(current_csv_file_df):
     util.include_markdown("welcome")
-    new_csv_file = st.file_uploader("Upload CSV file here.")
+    new_csv_file = st.file_uploader("")
     if new_csv_file:
         try:
             df = parse_csv.process_csv(new_csv_file)
@@ -25,3 +25,5 @@ def run(current_csv_file_df):
             st.experimental_rerun()  # TODO: why doesn't it open 1st tab here?
     with st.expander("About Feedback Map", expanded=False):
         util.include_markdown("about")
+    with st.expander("Frequently Asked Questions", expanded=False):
+        util.include_markdown("faqs")

@@ -7,6 +7,8 @@ CLUSTER_OPTION_TEXT = "[Auto-pick colors based on the topic of the response text
 TITLE = "Feedback Map"
 CATEGORICAL_QUESTIONS_BGCOLOR = "lightyellow"
 MAX_VALUES_TO_SUMMARIZE = 20
+QUALTRICS_SURVEY_URL = "https://neu.co1.qualtrics.com/jfe/form/SV_eyQf1JSVWeVhx1I"
+SURVEY_CSS = "<style> .big-font { font-size:30px !important ; padding: 5px; background-color: lightgreen; } </style>"
 
 # Set to true to run without transformers or spacy
 MOCK_MODE = False
