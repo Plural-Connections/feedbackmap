@@ -11,7 +11,9 @@ def run(current_csv_file_df):
         try:
             df = parse_csv.process_csv(new_csv_file)
         except Exception as e:
-            st.warning("We failed to parse that as a CSV file.  We'll attempt to load it as a JSONLines file and then as a plain-text file with a single column.")
+            st.warning(
+                "We failed to parse that as a CSV file.  We'll attempt to load it as a JSONLines file and then as a plain-text file with a single column."
+            )
             try:
                 df = parse_csv.process_txt(new_csv_file)
             except Exception as e:
