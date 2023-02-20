@@ -43,6 +43,19 @@ def cluster_data(full_embs, min_cluster_size):
     clusterer.fit(mid_umap_embs)
     return list(clusterer.labels_)
 
+def get_cluster_size(full_embs):
+    default_cluster_size = max(5, len(full_embs) // 500)
+    cluster_size_choices = list(set([5, 10, 20, 50, 100] + [default_cluster_size]))
+    cluster_size_choices.sort()
+    cluster_size = st.selectbox("Minimum size of auto-generated clusters",
+                                cluster_size_choices,
+                                cluster_size_choices.index(default_cluster_size))
+    return cluster_size
+
+def get_cluster_prompt():
+    cluster_prompt = st.selectbox("How to summarize the responses in the table below",
+                                  [k for k in app_config.PROMPTS])
+    return cluster_prompt
 
 def get_grouping_key_of_interest(categories):
     res = st.selectbox(
@@ -105,13 +118,12 @@ def run(columns_to_analyze, df, categories):
                     )
 
                 scatterplot_placeholder = st.empty()
+                col1, col2 = st.columns(2)
+                with col1:
+                    cluster_prompt = get_cluster_prompt()
                 if grouping_key == app_config.CLUSTER_OPTION_TEXT:
-                    default_cluster_size = max(5, len(full_embs) // 500)
-                    cluster_size_choices = list(set([5, 10, 20, 50, 100] + [default_cluster_size]))
-                    cluster_size_choices.sort()
-                    cluster_size = st.selectbox("Minimum size of auto-generated clusters",
-                                                cluster_size_choices,
-                                                cluster_size_choices.index(default_cluster_size))
+                    with col2:
+                        cluster_size = get_cluster_size(full_embs)
                     cluster_result = cluster_data(full_embs, cluster_size)
                     cluster_label_counts = defaultdict(lambda: 0)
                     cluster_labels = [
@@ -141,6 +153,7 @@ def run(columns_to_analyze, df, categories):
         # Sort category values by popularity
         category_values.sort(key=lambda x: categories[grouping_key][x], reverse=True)
 
+
         # Per-value summary table
         with value_table_expander:
             table = []
@@ -149,7 +162,7 @@ def run(columns_to_analyze, df, categories):
                 columns_to_analyze[0],
                 grouping_key,
                 category_values[: app_config.MAX_VALUES_TO_SUMMARIZE],
-                short_prompt=True,
+                prompt=cluster_prompt
             )
 
             # Color the "Response rate" column based on whether it's above or

@@ -17,11 +17,27 @@ MOCK_MODE = False
 # placeholders to be printed for the summarization features.
 USE_GPT3 = True
 
-GPT3_MODEL_SHORT = "text-davinci-003"
-GPT3_PROMPT_SHORT = "Summarize these responses in one sentence."
+PROMPTS = {
+    "One sentence": {
+        "prompt": "Summarize these responses in one sentence.",
+        "model": "text-davinci-003"
+    },
+    "Three words": {
+        "prompt": "Summarize these responses in three words.",
+        "model": "text-davinci-003"
+    },
+    "Three adjectives": {
+        "prompt": "What three adjectives best describe these responses?",
+        "model": "text-davinci-003"
+    },
+    "Paragraph": {
+        "prompt": "Briefly summarize these responses.",
+        "model": "text-davinci-003"
+    }
+}
 
-GPT3_MODEL_LONG = "text-davinci-003"
-GPT3_PROMPT_LONG = "Briefly summarize these responses."
+DEFAULT_PROMPT = "Paragraph"
+
 
 # See https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them
 MAX_TOKENS = {"text-curie-001": 2048, "text-davinci-003": 4096}
