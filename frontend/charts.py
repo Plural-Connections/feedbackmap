@@ -1,12 +1,16 @@
 #!/user/bin/env python3
 
 from collections import defaultdict
+import re
 
 import altair
 import pandas as pd
 
 import parse_csv
 
+# It shouldn't be necessary to enumerate the tableau20 colors like tis
+# but I can't figure out how to get them programmatically
+_TABLEAU20_SCHEME = ["#4379AB", "#96CCEB", "#FF8900", "#FFBC71", "#3DA443", "#76D472", "#BA9900", "#F7CD4B", "#249A95", "#77BEB6", "#F14A54", "#FF9797", "#7B706E", "#BCB0AB", "#E16A96", "#FFBCD3", "#B976A3", "#DCA3CA", "#A3745C", "#DDB3A4"]
 
 def make_scatterplot_base(data, color_key):
     altair.renderers.enable("html")
@@ -78,4 +82,9 @@ def make_scatterplot_base(data, color_key):
         )
         .add_selection(selection)
     )
-    return chart
+
+    category_to_color = dict([(re.sub(r" \[.*", "", category),
+                               _TABLEAU20_SCHEME[i])
+                              for i, category in enumerate(sorted_values[:len(_TABLEAU20_SCHEME)])])
+
+    return chart, category_to_color

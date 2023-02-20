@@ -24,12 +24,12 @@ def streamlit_app():
     st.title(app_config.TITLE)
     app_config.CONFIG.update(get_config(app_config.MOCK_MODE))
     columns_to_analyze = None
-    csv_file_df = None
+    df = None
 
     if "analyze" in st.session_state:
         columns_to_analyze = st.session_state["analyze"]
     if "uploaded" in st.session_state:
-        csv_file_df = st.session_state["uploaded"]
+        df = st.session_state["uploaded"]
 
     # Arrange tabs
     tab_placeholder = st.empty()
@@ -44,11 +44,10 @@ def streamlit_app():
             import_tab_st = st.tabs(["Welcome"])[0]
 
     with import_tab_st:
-        import_tab.run(csv_file_df)
+        import_tab.run(df)
 
-    if csv_file_df is not None:
+    if df is not None:
         with st.spinner():
-            df = csv_file_df
             categories, text_response_columns = parse_csv.infer_column_types(df)
         with summary_tab_st:
             summary_tab.run(df, text_response_columns, categories)

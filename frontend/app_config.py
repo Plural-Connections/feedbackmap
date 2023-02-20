@@ -2,7 +2,7 @@
 
 
 CONFIG = {}
-CLUSTER_OPTION_TEXT = "[Auto-pick colors based on the topic of the response text]"
+CLUSTER_OPTION_TEXT = "Auto-cluster based on the topic of the response text"
 
 TITLE = "Feedback Map"
 CATEGORICAL_QUESTIONS_BGCOLOR = "lightyellow"

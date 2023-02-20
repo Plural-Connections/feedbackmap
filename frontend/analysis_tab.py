@@ -8,6 +8,7 @@ from umap import umap_ as um
 import app_config
 import charts
 
+_RESPONSE_RATE_TEXT = "Response rate for that question"
 
 @st.cache_data(persist=True)
 def embed_responses(df, q):
@@ -44,9 +45,10 @@ def cluster_data(full_embs):
 
 def get_grouping_key_of_interest(categories):
     res = st.selectbox(
-        "Color points based on responses to a categorical question OR auto-generated cluster labels:",
+        "Choose how the responses will be clustered and colored below:",
         [app_config.CLUSTER_OPTION_TEXT] + list(categories.keys()),
-        format_func=lambda x: str(x),
+        format_func=lambda x: ((x == app_config.CLUSTER_OPTION_TEXT) and x
+                               or ("Group by answer to: " + str(x))),
         index=0
     )
     return res
@@ -117,7 +119,7 @@ def run(columns_to_analyze, df, categories):
                     categories[app_config.CLUSTER_OPTION_TEXT] = dict(
                         cluster_label_counts
                     )
-                scatterplot = charts.make_scatterplot_base(data, grouping_key)
+                scatterplot, color_scheme = charts.make_scatterplot_base(data, grouping_key)
                 st.altair_chart(scatterplot)
             st.markdown(
                 app_config.SURVEY_CSS
@@ -140,6 +142,8 @@ def run(columns_to_analyze, df, categories):
                 short_prompt=True,
             )
 
+            # Color the "Response rate" column based on whether it's above or
+            # below average response rate
             overall_nonempty_rate = (
                 100.0 * (df[columns_to_analyze[0]] != "").sum() / len(df)
             )
@@ -148,6 +152,10 @@ def run(columns_to_analyze, df, categories):
                 and "background-color: lightgreen"
                 or "background-color: pink"
             )
+            # Color the leftmost column to coincide with the scatterplot's colors
+            scatterplot_color = (
+                lambda val: "font-weight: bold; background-color: %s" % (
+                    color_scheme.get(val, "white")))
 
             # CSS to inject contained in a string
             hide_table_row_index = """
@@ -174,14 +182,23 @@ def run(columns_to_analyze, df, categories):
                         "Number of respondees": num_responses,
                         'Auto-generated summary for their answers to "%s"'
                         % (columns_to_analyze[0]): res["answer"],
-                        "Response rate for that question": nonempty_rate,
+                        _RESPONSE_RATE_TEXT: nonempty_rate,
                     }
                 )
-            st.table(
-                pd.DataFrame(table).style.applymap(
-                    nonempty_color, subset=["Response rate for that question"]
-                )
+            table_df = pd.DataFrame(table)
+            if grouping_key == app_config.CLUSTER_OPTION_TEXT:
+                # Don't show this column for auto-cluster, since it's always 100%
+                table_df = table_df.drop([_RESPONSE_RATE_TEXT], axis=1)
+            table_df = table_df.style.applymap(
+                scatterplot_color, subset=["Categorical response"]
             )
+            if grouping_key != app_config.CLUSTER_OPTION_TEXT:
+                table_df = table_df.applymap(
+                    nonempty_color, subset=[_RESPONSE_RATE_TEXT]
+                )
+
+            st.table(table_df)
+
             st.markdown(
                 app_config.SURVEY_CSS
                 + '<p class="big-font">Was this helpful? <a href="%s" target="_blank">Share your feedback on Feedback Map!</p>'
