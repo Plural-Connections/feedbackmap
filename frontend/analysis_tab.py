@@ -106,7 +106,7 @@ def run(columns_to_analyze, df, categories):
 
                 scatterplot_placeholder = st.empty()
                 if grouping_key == app_config.CLUSTER_OPTION_TEXT:
-                    default_cluster_size = max(5, len(full_embs) // 200)
+                    default_cluster_size = max(5, len(full_embs) // 500)
                     cluster_size_choices = list(set([5, 10, 20, 50, 100] + [default_cluster_size]))
                     cluster_size_choices.sort()
                     cluster_size = st.selectbox("Minimum size of auto-generated clusters",
