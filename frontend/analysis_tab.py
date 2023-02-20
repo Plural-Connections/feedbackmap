@@ -53,7 +53,7 @@ def get_cluster_size(full_embs):
     return cluster_size
 
 def get_cluster_prompt():
-    cluster_prompt = st.selectbox("How to summarize the responses in the table below",
+    cluster_prompt = st.selectbox("",
                                   [k for k in app_config.PROMPTS])
     return cluster_prompt
 
@@ -118,12 +118,8 @@ def run(columns_to_analyze, df, categories):
                     )
 
                 scatterplot_placeholder = st.empty()
-                col1, col2 = st.columns(2)
-                with col1:
-                    cluster_prompt = get_cluster_prompt()
                 if grouping_key == app_config.CLUSTER_OPTION_TEXT:
-                    with col2:
-                        cluster_size = get_cluster_size(full_embs)
+                    cluster_size = get_cluster_size(full_embs)
                     cluster_result = cluster_data(full_embs, cluster_size)
                     cluster_label_counts = defaultdict(lambda: 0)
                     cluster_labels = [
@@ -157,6 +153,7 @@ def run(columns_to_analyze, df, categories):
         # Per-value summary table
         with value_table_expander:
             table = []
+            cluster_prompt = get_cluster_prompt()
             summaries = app_config.CONFIG["llm"].get_summaries(
                 df,
                 columns_to_analyze[0],

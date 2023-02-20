@@ -18,7 +18,7 @@ MOCK_MODE = False
 USE_GPT3 = True
 
 PROMPTS = {
-    "One sentence": {
+    "One sentence summary": {
         "prompt": "Summarize these responses in one sentence.",
         "model": "text-davinci-003"
     },
@@ -30,13 +30,13 @@ PROMPTS = {
         "prompt": "What three adjectives best describe these responses?",
         "model": "text-davinci-003"
     },
-    "Paragraph": {
+    "Paragraph summary": {
         "prompt": "Briefly summarize these responses.",
         "model": "text-davinci-003"
     }
 }
 
-DEFAULT_PROMPT = "Paragraph"
+DEFAULT_PROMPT = "Paragraph summary"
 
 
 # See https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them
