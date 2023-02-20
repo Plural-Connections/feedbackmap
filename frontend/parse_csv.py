@@ -5,9 +5,14 @@ Logic related to understanding the survey CSVs;  no streamlit in here.
 """
 
 from collections import defaultdict
+import json
 import re
+from io import StringIO
 
 import pandas as pd
+import streamlit as st
+
+import app_config
 
 # Do not treat these columns in the input as either categorical or free-response questions
 _SKIP_COLUMNS = ["Timestamp"]
@@ -18,19 +23,29 @@ _MAX_FRACTION_FOR_CATEGORICAL = 0.2
 
 
 def process_csv(uploaded_file):
-    df = pd.read_csv(uploaded_file, dtype=str).fillna("")
     return df
 
-def process_txt(uploaded_file):
-    df = None
-    try:
-        # Try JSONLines
-        df = pd.read_json(uploaded_file.getvalue(), lines=True)
-    except Exception as e:
-        # Try a single column plaintext file
-        df = pd.read_table(uploaded_file.getvalue(),
-                           dtype=str, header=None, names=["Text"]).fillna("")
-    return df
+def process_file(uploaded_file):
+    table = []
+    stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
+
+    # Infer file type.  If first line begins and ends in braces, assume it's
+    # a JSONL file.  Otherwise, try CSV.  If that fails, read as a single text column
+    # (Note that a text file without any commas will parse as a CSV and will use
+    # the first line as the column name.)
+    first_line = stringio.readline().strip()
+    if first_line.startswith("{") and first_line.endswith("}"):
+        for line in stringio:
+            table.append(json.loads(line))
+    else:
+        try:
+            return pd.read_csv(uploaded_file, dtype=str).fillna("")
+        except Exception as e:
+            table.append({app_config.COLUMN_NAME_FOR_TEXT_FILES: first_line})
+            for line in stringio:
+                table.append({app_config.COLUMN_NAME_FOR_TEXT_FILES: line})
+
+    return pd.DataFrame(table, dtype=str)
 
 def infer_column_types(df):
     categories = {}  # column -> val_dict

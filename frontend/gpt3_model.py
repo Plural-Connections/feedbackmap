@@ -61,14 +61,18 @@ class LiveGptModel(OfflineModel):
             self, df, column, facet_column=None, facet_val=None, short_prompt=False
     ):
         model = (short_prompt and app_config.GPT3_MODEL_SHORT or app_config.GPT3_MODEL_LONG)
-        preamble = 'Here are some responses to the question "%s"' % (column)
+        if column == app_config.COLUMN_NAME_FOR_TEXT_FILES:
+            # For single-column text files, do not label the examples
+            preamble = ''
+        else:
+            preamble = 'Here are some responses to the question "%s":\n' % (column)
         if short_prompt:
             instructions = app_config.GPT3_PROMPT_SHORT
         else:
             instructions = app_config.GPT3_PROMPT_LONG
         nonempty_responses = self.prompt_examples(df, column, facet_column, facet_val)
         # See https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them
-        max_words = app_config.MAX_TOKENS[model] / 1.4 - len(preamble) - len(instructions)
+        max_words = app_config.MAX_TOKENS[model] / 1.5 - len(preamble) - len(instructions)
 
         examples = None
 

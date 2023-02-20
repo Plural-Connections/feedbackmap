@@ -34,7 +34,8 @@ def embed_responses(df, q):
 @st.cache_data(persist=True)
 def cluster_data(full_embs):
     mid_umap_embs = um.UMAP(
-        n_components=min(50, len(full_embs) - 1), metric="euclidean"
+        # Note: UMAP seems to require that k <= N-2
+        n_components=min(50, len(full_embs) - 2), metric="euclidean"
     ).fit_transform(full_embs)
     clusterer = hdbscan.HDBSCAN(min_cluster_size=min(5, len(full_embs) - 1))
     clusterer.fit(mid_umap_embs)
