@@ -33,12 +33,13 @@ def embed_responses(df, q):
 
 
 @st.cache_data(persist=True)
-def cluster_data(full_embs):
+def cluster_data(full_embs, min_cluster_size):
     mid_umap_embs = um.UMAP(
         # Note: UMAP seems to require that k <= N-2
         n_components=min(50, len(full_embs) - 2), metric="euclidean"
     ).fit_transform(full_embs)
-    clusterer = hdbscan.HDBSCAN(min_cluster_size=min(5, len(full_embs) - 1))
+    clusterer = hdbscan.HDBSCAN(min_cluster_size=min(min_cluster_size,
+                                                     len(full_embs) - 1))
     clusterer.fit(mid_umap_embs)
     return list(clusterer.labels_)
 
@@ -102,8 +103,16 @@ def run(columns_to_analyze, df, categories):
                             for i in range(len(sents))
                         ]
                     )
+
+                scatterplot_placeholder = st.empty()
                 if grouping_key == app_config.CLUSTER_OPTION_TEXT:
-                    cluster_result = cluster_data(full_embs)
+                    default_cluster_size = max(5, len(full_embs) // 200)
+                    cluster_size_choices = list(set([5, 10, 20, 50, 100] + [default_cluster_size]))
+                    cluster_size_choices.sort()
+                    cluster_size = st.selectbox("Minimum size of auto-generated clusters",
+                                                cluster_size_choices,
+                                                cluster_size_choices.index(default_cluster_size))
+                    cluster_result = cluster_data(full_embs, cluster_size)
                     cluster_label_counts = defaultdict(lambda: 0)
                     cluster_labels = [
                         "Cluster %s" % (cluster_result[i])
@@ -119,8 +128,9 @@ def run(columns_to_analyze, df, categories):
                     categories[app_config.CLUSTER_OPTION_TEXT] = dict(
                         cluster_label_counts
                     )
-                scatterplot, color_scheme = charts.make_scatterplot_base(data, grouping_key)
-                st.altair_chart(scatterplot)
+                with scatterplot_placeholder:
+                    scatterplot, color_scheme = charts.make_scatterplot_base(data, grouping_key)
+                    st.altair_chart(scatterplot)
             st.markdown(
                 app_config.SURVEY_CSS
                 + '<p class="big-font">Was this helpful? <a href="%s" target="_blank">Share your feedback on Feedback Map!</p>'

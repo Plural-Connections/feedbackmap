@@ -84,7 +84,7 @@ def make_scatterplot_base(data, color_key):
     )
 
     category_to_color = dict([(re.sub(r" \[.*", "", category),
-                               _TABLEAU20_SCHEME[i])
-                              for i, category in enumerate(sorted_values[:len(_TABLEAU20_SCHEME)])])
+                               _TABLEAU20_SCHEME[i % len(_TABLEAU20_SCHEME)])
+                              for i, category in enumerate(sorted_values)])
 
     return chart, category_to_color
