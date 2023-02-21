@@ -2,7 +2,7 @@
 
 
 CONFIG = {}
-CLUSTER_OPTION_TEXT = "[Auto-pick colors based on the topic of the response text]"
+CLUSTER_OPTION_TEXT = "Auto-cluster based on the topic of the response text"
 
 TITLE = "Feedback Map"
 CATEGORICAL_QUESTIONS_BGCOLOR = "lightyellow"
@@ -17,11 +17,27 @@ MOCK_MODE = False
 # placeholders to be printed for the summarization features.
 USE_GPT3 = True
 
-GPT3_MODEL_SHORT = "text-curie-001"
-GPT3_PROMPT_SHORT = "Briefly summarize these responses."
+PROMPTS = {
+    "One sentence summary": {
+        "prompt": "Summarize these responses in one sentence.",
+        "model": "text-davinci-003"
+    },
+    "Three words": {
+        "prompt": "Summarize these responses in three words.",
+        "model": "text-davinci-003"
+    },
+    "Three adjectives": {
+        "prompt": "What three adjectives best describe these responses?",
+        "model": "text-davinci-003"
+    },
+    "Paragraph summary": {
+        "prompt": "Briefly summarize these responses.",
+        "model": "text-davinci-003"
+    }
+}
 
-GPT3_MODEL_LONG = "text-davinci-003"
-GPT3_PROMPT_LONG = "Briefly summarize these responses."
+DEFAULT_PROMPT = "Paragraph summary"
+
 
 # See https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them
 MAX_TOKENS = {"text-curie-001": 2048, "text-davinci-003": 4096}
@@ -29,3 +45,6 @@ MAX_TOKENS = {"text-curie-001": 2048, "text-davinci-003": 4096}
 # The maximum number of rows for the sentence embedding scatterplot.
 # For larger data sets, rows will be randomly sampled to select the data to plot.
 MAX_ROWS_FOR_ANALYSIS = 5000
+
+# If the user uploads a plaintext (non-CSV) file, give the column this generic name.
+COLUMN_NAME_FOR_TEXT_FILES = "Text"

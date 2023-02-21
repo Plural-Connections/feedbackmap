@@ -8,6 +8,8 @@ from umap import umap_ as um
 import app_config
 import charts
 
+_RESPONSE_RATE_TEXT = "Response rate for that question"
+
 
 @st.cache_data(persist=True)
 def embed_responses(df, q):
@@ -32,20 +34,45 @@ def embed_responses(df, q):
 
 
 @st.cache_data(persist=True)
-def cluster_data(full_embs):
+def cluster_data(full_embs, min_cluster_size):
     mid_umap_embs = um.UMAP(
-        n_components=min(50, len(full_embs) - 1), metric="euclidean"
+        # Note: UMAP seems to require that k <= N-2
+        n_components=min(50, len(full_embs) - 2),
+        metric="euclidean",
     ).fit_transform(full_embs)
-    clusterer = hdbscan.HDBSCAN(min_cluster_size=min(5, len(full_embs) - 1))
+    clusterer = hdbscan.HDBSCAN(
+        min_cluster_size=min(min_cluster_size, len(full_embs) - 1)
+    )
     clusterer.fit(mid_umap_embs)
     return list(clusterer.labels_)
 
 
+def get_cluster_size(full_embs):
+    default_cluster_size = max(5, len(full_embs) // 500)
+    cluster_size_choices = list(set([5, 10, 20, 50, 100] + [default_cluster_size]))
+    cluster_size_choices.sort()
+    cluster_size = st.selectbox(
+        "Minimum size of auto-generated clusters",
+        cluster_size_choices,
+        cluster_size_choices.index(default_cluster_size),
+    )
+    return cluster_size
+
+
+def get_cluster_prompt():
+    cluster_prompt = st.selectbox("", [k for k in app_config.PROMPTS])
+    return cluster_prompt
+
+
 def get_grouping_key_of_interest(categories):
     res = st.selectbox(
-        "Color points based on responses to a categorical question OR auto-generated cluster labels:",
+        "Choose how the responses will be clustered and colored below:",
         [app_config.CLUSTER_OPTION_TEXT] + list(categories.keys()),
-        format_func=lambda x: str(x),
+        format_func=lambda x: (
+            (x == app_config.CLUSTER_OPTION_TEXT)
+            and x
+            or ("Group by answer to: " + str(x))
+        ),
         index=0,
     )
     return res
@@ -101,8 +128,11 @@ def run(columns_to_analyze, df, categories):
                             for i in range(len(sents))
                         ]
                     )
+
+                scatterplot_placeholder = st.empty()
                 if grouping_key == app_config.CLUSTER_OPTION_TEXT:
-                    cluster_result = cluster_data(full_embs)
+                    cluster_size = get_cluster_size(full_embs)
+                    cluster_result = cluster_data(full_embs, cluster_size)
                     cluster_label_counts = defaultdict(lambda: 0)
                     cluster_labels = [
                         "Cluster %s" % (cluster_result[i])
@@ -118,8 +148,11 @@ def run(columns_to_analyze, df, categories):
                     categories[app_config.CLUSTER_OPTION_TEXT] = dict(
                         cluster_label_counts
                     )
-                scatterplot = charts.make_scatterplot_base(data, grouping_key)
-                st.altair_chart(scatterplot)
+                with scatterplot_placeholder:
+                    scatterplot, color_scheme = charts.make_scatterplot_base(
+                        data, grouping_key
+                    )
+                    st.altair_chart(scatterplot)
             st.markdown(
                 app_config.SURVEY_CSS
                 + '<p class="big-font">Was this helpful? <a href="%s" target="_blank">Share your feedback on Feedback Map!</p>'
@@ -133,14 +166,17 @@ def run(columns_to_analyze, df, categories):
         # Per-value summary table
         with value_table_expander:
             table = []
+            cluster_prompt = get_cluster_prompt()
             summaries = app_config.CONFIG["llm"].get_summaries(
                 df,
                 columns_to_analyze[0],
                 grouping_key,
                 category_values[: app_config.MAX_VALUES_TO_SUMMARIZE],
-                short_prompt=True,
+                prompt=cluster_prompt,
             )
 
+            # Color the "Response rate" column based on whether it's above or
+            # below average response rate
             overall_nonempty_rate = (
                 100.0 * (df[columns_to_analyze[0]] != "").sum() / len(df)
             )
@@ -148,6 +184,11 @@ def run(columns_to_analyze, df, categories):
                 lambda val: float(val.replace("%", "")) >= overall_nonempty_rate
                 and "background-color: lightgreen"
                 or "background-color: pink"
+            )
+            # Color the leftmost column to coincide with the scatterplot's colors
+            scatterplot_color = (
+                lambda val: "font-weight: bold; background-color: %s"
+                % (color_scheme.get(val, "white"))
             )
 
             # CSS to inject contained in a string
@@ -175,14 +216,23 @@ def run(columns_to_analyze, df, categories):
                         "Number of respondees": num_responses,
                         'Auto-generated summary for their answers to "%s"'
                         % (columns_to_analyze[0]): res["answer"],
-                        "Response rate for that question": nonempty_rate,
+                        _RESPONSE_RATE_TEXT: nonempty_rate,
                     }
                 )
-            st.table(
-                pd.DataFrame(table).style.applymap(
-                    nonempty_color, subset=["Response rate for that question"]
-                )
+            table_df = pd.DataFrame(table)
+            if grouping_key == app_config.CLUSTER_OPTION_TEXT:
+                # Don't show this column for auto-cluster, since it's always 100%
+                table_df = table_df.drop([_RESPONSE_RATE_TEXT], axis=1)
+            table_df = table_df.style.applymap(
+                scatterplot_color, subset=["Categorical response"]
             )
+            if grouping_key != app_config.CLUSTER_OPTION_TEXT:
+                table_df = table_df.applymap(
+                    nonempty_color, subset=[_RESPONSE_RATE_TEXT]
+                )
+
+            st.table(table_df)
+
             st.markdown(
                 app_config.SURVEY_CSS
                 + '<p class="big-font">Was this helpful? <a href="%s" target="_blank">Share your feedback on Feedback Map!</p>'
