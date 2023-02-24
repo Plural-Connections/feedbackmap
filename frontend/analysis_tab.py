@@ -10,6 +10,7 @@ import charts
 
 _RESPONSE_RATE_TEXT = "Response rate for that question"
 
+
 @st.cache_data(persist=True)
 def embed_responses(df, q):
     # Split raw responses into sentences and embed
@@ -36,34 +37,43 @@ def embed_responses(df, q):
 def cluster_data(full_embs, min_cluster_size):
     mid_umap_embs = um.UMAP(
         # Note: UMAP seems to require that k <= N-2
-        n_components=min(50, len(full_embs) - 2), metric="euclidean"
+        n_components=min(50, len(full_embs) - 2),
+        metric="euclidean",
     ).fit_transform(full_embs)
-    clusterer = hdbscan.HDBSCAN(min_cluster_size=min(min_cluster_size,
-                                                     len(full_embs) - 1))
+    clusterer = hdbscan.HDBSCAN(
+        min_cluster_size=min(min_cluster_size, len(full_embs) - 1)
+    )
     clusterer.fit(mid_umap_embs)
     return list(clusterer.labels_)
+
 
 def get_cluster_size(full_embs):
     default_cluster_size = max(5, len(full_embs) // 500)
     cluster_size_choices = list(set([5, 10, 20, 50, 100] + [default_cluster_size]))
     cluster_size_choices.sort()
-    cluster_size = st.selectbox("Minimum size of auto-generated clusters",
-                                cluster_size_choices,
-                                cluster_size_choices.index(default_cluster_size))
+    cluster_size = st.selectbox(
+        "Minimum size of auto-generated clusters",
+        cluster_size_choices,
+        cluster_size_choices.index(default_cluster_size),
+    )
     return cluster_size
 
+
 def get_cluster_prompt():
-    cluster_prompt = st.selectbox("",
-                                  [k for k in app_config.PROMPTS])
+    cluster_prompt = st.selectbox("", [k for k in app_config.PROMPTS])
     return cluster_prompt
+
 
 def get_grouping_key_of_interest(categories):
     res = st.selectbox(
         "Choose how the responses will be clustered and colored below:",
         [app_config.CLUSTER_OPTION_TEXT] + list(categories.keys()),
-        format_func=lambda x: ((x == app_config.CLUSTER_OPTION_TEXT) and x
-                               or ("Group by answer to: " + str(x))),
-        index=0
+        format_func=lambda x: (
+            (x == app_config.CLUSTER_OPTION_TEXT)
+            and x
+            or ("Group by answer to: " + str(x))
+        ),
+        index=0,
     )
     return res
 
@@ -71,8 +81,10 @@ def get_grouping_key_of_interest(categories):
 def run(columns_to_analyze, df, categories):
     st.subheader(", ".join(columns_to_analyze))
     if len(df) > app_config.MAX_ROWS_FOR_ANALYSIS:
-        st.warning("We have sampled %d random rows from the data for the following analysis"
-                   % (app_config.MAX_ROWS_FOR_ANALYSIS))
+        st.warning(
+            "We have sampled %d random rows from the data for the following analysis"
+            % (app_config.MAX_ROWS_FOR_ANALYSIS)
+        )
         df = df.sample(app_config.MAX_ROWS_FOR_ANALYSIS, random_state=42)
     # Compute GPT3-based summary
     with st.spinner():
@@ -137,7 +149,9 @@ def run(columns_to_analyze, df, categories):
                         cluster_label_counts
                     )
                 with scatterplot_placeholder:
-                    scatterplot, color_scheme = charts.make_scatterplot(data, grouping_key, categories.keys())
+                    scatterplot, color_scheme = charts.make_scatterplot(
+                        data, grouping_key, categories.keys()
+                    )
                     st.altair_chart(scatterplot)
 
             st.markdown(
@@ -150,7 +164,6 @@ def run(columns_to_analyze, df, categories):
         # Sort category values by popularity
         category_values.sort(key=lambda x: categories[grouping_key][x], reverse=True)
 
-
         # Per-value summary table
         with value_table_expander:
             table = []
@@ -160,7 +173,7 @@ def run(columns_to_analyze, df, categories):
                 columns_to_analyze[0],
                 grouping_key,
                 category_values[: app_config.MAX_VALUES_TO_SUMMARIZE],
-                prompt=cluster_prompt
+                prompt=cluster_prompt,
             )
 
             # Color the "Response rate" column based on whether it's above or
@@ -175,8 +188,9 @@ def run(columns_to_analyze, df, categories):
             )
             # Color the leftmost column to coincide with the scatterplot's colors
             scatterplot_color = (
-                lambda val: "font-weight: bold; background-color: %s" % (
-                    color_scheme.get(val, "white")))
+                lambda val: "font-weight: bold; background-color: %s"
+                % (color_scheme.get(val, "white"))
+            )
 
             # CSS to inject contained in a string
             hide_table_row_index = """
