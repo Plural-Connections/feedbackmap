@@ -13,6 +13,12 @@ SURVEY_CSS = "<style> .big-font { font-size:30px !important ; padding: 5px; back
 # Set to true to run without transformers or spacy
 MOCK_MODE = False
 
+UNCLUSTERED_NAME = "Unclustered"
+
+# Number of additional categories (other than the one of interest) to show on
+# tooltips in the topic scatterplot on the analysis tab
+MAX_CATEGORIES_ON_TOOLTIP = 5
+
 # Set to false if you don't have an OpenAI API key.  This will cause
 # placeholders to be printed for the summarization features.
 USE_GPT3 = True

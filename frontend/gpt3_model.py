@@ -10,7 +10,7 @@ from multiprocessing import Pool
 
 import app_config
 
-_MAX_SAMPLE_SIZE = 50
+_MAX_SAMPLE_SIZE = 100
 
 # For parallelizing value-specific summary queries.  Check GPT-3 API rate limit.
 _NUM_PROCESSES = 10

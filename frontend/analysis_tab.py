@@ -123,7 +123,7 @@ def run(columns_to_analyze, df, categories):
                     cluster_result = cluster_data(full_embs, cluster_size)
                     cluster_label_counts = defaultdict(lambda: 0)
                     cluster_labels = [
-                        "Cluster %s" % (cluster_result[i])
+                        (cluster_result[i] == -1) and app_config.UNCLUSTERED_NAME or ("Cluster %s" % (cluster_result[i]))
                         for i in range(len(cluster_result))
                     ]
                     for i, x in enumerate(data):
@@ -137,8 +137,9 @@ def run(columns_to_analyze, df, categories):
                         cluster_label_counts
                     )
                 with scatterplot_placeholder:
-                    scatterplot, color_scheme = charts.make_scatterplot_base(data, grouping_key)
+                    scatterplot, color_scheme = charts.make_scatterplot(data, grouping_key, categories.keys())
                     st.altair_chart(scatterplot)
+
             st.markdown(
                 app_config.SURVEY_CSS
                 + '<p class="big-font">Was this helpful? <a href="%s" target="_blank">Share your feedback on Feedback Map!</p>'
