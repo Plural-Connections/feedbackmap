@@ -7,6 +7,8 @@ from umap import umap_ as um
 
 import app_config
 import charts
+import local_models
+import util
 
 _RESPONSE_RATE_TEXT = "Response rate for that question"
 
@@ -44,7 +46,54 @@ def cluster_data(full_embs, min_cluster_size):
         min_cluster_size=min(min_cluster_size, len(full_embs) - 1)
     )
     clusterer.fit(mid_umap_embs)
-    return list(clusterer.labels_)
+
+    # Renumber clusters, most common to least common (with -1 last)
+    counts = defaultdict(lambda: 0)
+    for c in clusterer.labels_:
+        counts[str(c)] += 1
+    sorted_labels = list(counts.keys())
+
+    sorted_labels.sort(key=lambda x: ((x == "-1" and -1) or counts[x]), reverse=True)
+    final_labels = []
+    for label in clusterer.labels_:
+        label = str(label)
+        if label == "-1":  # unknown cluster
+            final_labels.append(app_config.UNCLUSTERED_NAME)
+        else:
+            final_labels.append("Cluster %d" % (sorted_labels.index(label) + 1))
+    return final_labels
+
+
+def top_words_table(data, grouping_key, categories):
+    st.write(
+        "The table below shows the key words and phrases found in the texts. "
+        + 'The "Total" column shows the number of occurrences in all texts, and the other columns '
+        + "show the number of occurrences in texts within each cluster.   You can change the "
+        + "way clusters are chosen in the selectbox above the scatterplot above.  The maximum "
+        + "clusters for each term are highlighted in green.  Click on a column header twice to sort "
+        + "the column by count, and thereby see the most popular key terms in the cluster."
+    )
+    phrase_df = local_models.get_top_phrases(data, grouping_key)
+    cols = list(phrase_df.columns.values)[2:]  # Term, total...
+    if grouping_key == app_config.CLUSTER_OPTION_TEXT:
+        # Sort numerically, with Unclustered at the end
+        cols.sort(
+            key=lambda x: int(
+                x.replace("Cluster ", "").replace(app_config.UNCLUSTERED_NAME, "1000")
+            )
+        )
+    else:
+        # Sort by popularity
+        cols.sort(key=lambda x: categories[grouping_key].get(x, 0), reverse=True)
+    phrase_df = phrase_df[["Term", "Total"] + cols]
+    # TODO:  Color the header columns according to the chart.   Hide index.
+    st.dataframe(
+        phrase_df.style.highlight_max(
+            color="lightgreen",
+            subset=[c for c in cols if c != app_config.UNCLUSTERED_NAME],
+            axis=1,
+        )
+    )
 
 
 def get_cluster_size(full_embs):
@@ -79,6 +128,7 @@ def get_grouping_key_of_interest(categories):
 
 
 def run(columns_to_analyze, df, categories):
+    util.hide_table_row_index()
     st.subheader(", ".join(columns_to_analyze))
     if len(df) > app_config.MAX_ROWS_FOR_ANALYSIS:
         st.warning(
@@ -101,8 +151,9 @@ def run(columns_to_analyze, df, categories):
             "Each dot represents a response sentence from the selected open-ended question.  Dots that are clustered together are likely to have similar meanings.",
             expanded=True,
         )
+        top_words_expander = st.expander("**Top words and phrases**", expanded=False)
         value_table_expander = st.expander(
-            'Summary of responses broken down by answers to the following categorical question: "%s"'
+            '**Summary of responses broken down by answers to the categorical question:** "%s"'
             % (grouping_key),
             expanded=True,
         )
@@ -134,13 +185,9 @@ def run(columns_to_analyze, df, categories):
                     cluster_size = get_cluster_size(full_embs)
                     cluster_result = cluster_data(full_embs, cluster_size)
                     cluster_label_counts = defaultdict(lambda: 0)
-                    cluster_labels = [
-                        (cluster_result[i] == -1) and app_config.UNCLUSTERED_NAME or ("Cluster %s" % (cluster_result[i]))
-                        for i in range(len(cluster_result))
-                    ]
                     for i, x in enumerate(data):
-                        cluster_label_counts[cluster_labels[i]] += 1
-                        x["rec"][app_config.CLUSTER_OPTION_TEXT] = cluster_labels[i]
+                        cluster_label_counts[cluster_result[i]] += 1
+                        x["rec"][app_config.CLUSTER_OPTION_TEXT] = cluster_result[i]
 
                     # Rewrite df to be based on the sentences, rather than responses
                     df = pd.DataFrame([x["rec"] for x in data])
@@ -163,6 +210,10 @@ def run(columns_to_analyze, df, categories):
 
         # Sort category values by popularity
         category_values.sort(key=lambda x: categories[grouping_key][x], reverse=True)
+
+        # Top words and phrases
+        with top_words_expander:
+            top_words_table(data, grouping_key, categories)
 
         # Per-value summary table
         with value_table_expander:
@@ -191,16 +242,6 @@ def run(columns_to_analyze, df, categories):
                 lambda val: "font-weight: bold; background-color: %s"
                 % (color_scheme.get(val, "white"))
             )
-
-            # CSS to inject contained in a string
-            hide_table_row_index = """
-            <style>
-            thead tr th:first-child {display:none}
-            tbody th {display:none}
-            </style>
-            """
-            # Inject CSS with Markdown
-            st.markdown(hide_table_row_index, unsafe_allow_html=True)
 
             for i, res in enumerate(summaries):
                 num_responses = categories.get(grouping_key, {}).get(

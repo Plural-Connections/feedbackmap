@@ -35,9 +35,7 @@ class OfflineModel:
                 len(examples)
             )
 
-    def get_summary(
-        self, df, column, facet_column=None, facet_val=None, prompt=None
-    ):
+    def get_summary(self, df, column, facet_column=None, facet_val=None, prompt=None):
         examples = self.prompt_examples(df, column, facet_column, facet_val)
         return {
             "instructions": "No GPT-3 model available",
@@ -49,8 +47,7 @@ class OfflineModel:
         }
 
     def get_summaries(
-        self, df, question_column, facet_column, facet_values,
-            prompt=None
+        self, df, question_column, facet_column, facet_values, prompt=None
     ):
         return [
             self.get_summary(df, question_column, facet_column, x) for x in facet_values
@@ -59,24 +56,30 @@ class OfflineModel:
 
 class LiveGptModel(OfflineModel):
     def get_summary(
-            self, df, column, facet_column=None, facet_val=None,
-            prompt=app_config.DEFAULT_PROMPT
+        self,
+        df,
+        column,
+        facet_column=None,
+        facet_val=None,
+        prompt=app_config.DEFAULT_PROMPT,
     ):
         model = app_config.PROMPTS[prompt]["model"]
         if column == app_config.COLUMN_NAME_FOR_TEXT_FILES:
             # For single-column text files, do not label the examples
-            preamble = ''
+            preamble = ""
         else:
             preamble = 'Here are some responses to the question "%s":\n' % (column)
         instructions = app_config.PROMPTS[prompt]["prompt"]
         nonempty_responses = self.prompt_examples(df, column, facet_column, facet_val)
         # See https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them
-        max_words = app_config.MAX_TOKENS[model] / 1.5 - len(preamble) - len(instructions)
+        max_words = (
+            app_config.MAX_TOKENS[model] / 1.5 - len(preamble) - len(instructions) - 500
+        )
 
         examples = None
 
         max_sample_size = _MAX_SAMPLE_SIZE
-        while (examples is None or len("\n".join(examples).split()) > max_words):
+        while examples is None or len("\n".join(examples).split()) > max_words:
             examples = nonempty_responses.sample(
                 min(max_sample_size, len(nonempty_responses)), random_state=42
             )
@@ -92,7 +95,7 @@ class LiveGptModel(OfflineModel):
                 + instructions
                 + "\n"
             )
-            response = run_completion_query(prompt_str, model = model)
+            response = run_completion_query(prompt_str, model=model)
             answer = set([c["text"] for c in response["choices"]])
             answer = "\n".join(list(answer))
         return {
@@ -105,16 +108,18 @@ class LiveGptModel(OfflineModel):
         }
 
     def get_summaries(
-        self, df, question_column, facet_column, facet_values,
-            prompt=app_config.DEFAULT_PROMPT
+        self,
+        df,
+        question_column,
+        facet_column,
+        facet_values,
+        prompt=app_config.DEFAULT_PROMPT,
     ):
         """Get a summary for each value of a facet."""
         if True:
             # Serial
             return [
-                self.get_summary(
-                    df, question_column, facet_column, x, prompt=prompt
-                )
+                self.get_summary(df, question_column, facet_column, x, prompt=prompt)
                 for x in facet_values
             ]
         else:

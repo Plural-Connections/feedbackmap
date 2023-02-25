@@ -12,13 +12,37 @@ import streamlit as st
 
 # It shouldn't be necessary to enumerate the tableau20 colors like tis
 # but I can't figure out how to get them programmatically
-_TABLEAU20_SCHEME = ["#4379AB", "#96CCEB", "#FF8900", "#FFBC71", "#3DA443", "#76D472", "#BA9900", "#F7CD4B", "#249A95", "#77BEB6", "#F14A54", "#FF9797", "#7B706E", "#BCB0AB", "#E16A96", "#FFBCD3", "#B976A3", "#DCA3CA", "#A3745C", "#DDB3A4"]
+_TABLEAU20_SCHEME = [
+    "#4379AB",
+    "#96CCEB",
+    "#FF8900",
+    "#FFBC71",
+    "#3DA443",
+    "#76D472",
+    "#BA9900",
+    "#F7CD4B",
+    "#249A95",
+    "#77BEB6",
+    "#F14A54",
+    "#FF9797",
+    "#7B706E",
+    "#BCB0AB",
+    "#E16A96",
+    "#FFBCD3",
+    "#B976A3",
+    "#DCA3CA",
+    "#A3745C",
+    "#DDB3A4",
+]
+
 
 def make_scatterplot(data, color_key, categories_to_show):
     altair.renderers.enable("html")
     value_counts = defaultdict(lambda: 0)
     items = []
-    categories_to_show = [c for c in categories_to_show if c != color_key][:app_config.MAX_CATEGORIES_ON_TOOLTIP]
+    categories_to_show = [c for c in categories_to_show if c != color_key][
+        : app_config.MAX_CATEGORIES_ON_TOOLTIP
+    ]
     for x in data:
         categories = x["rec"].get(color_key, "Unknown")
         categories_values = parse_csv.split_values(categories)
@@ -32,23 +56,23 @@ def make_scatterplot(data, color_key, categories_to_show):
                     "x": x["vec"][0],
                     "y": x["vec"][1],
                     "Answer": x["sentence"],
-                    **{other_category: x["rec"][other_category] for other_category in categories_to_show}
+                    **{
+                        other_category: x["rec"][other_category]
+                        for other_category in categories_to_show
+                    },
                 }
                 for group_value in categories_values
             ]
         )
 
     # Display the value count in the legend
-    legend_values = {}    # legend string -> count
-    unclustered_legend_value = None
+    legend_values = {}  # legend string -> count
     for item in items:
         legend_value = "%s [%0.2f%%]" % (
             item["ColorGroup"],
             100.0 * value_counts[item["ColorGroup"]] / len(data),
         )
         legend_values[legend_value] = value_counts[item["ColorGroup"]]
-        if item["ColorGroup"] == "-1":
-            unclustered_legend_value = legend_value
         item["GroupForLegend"] = legend_value
     df = pd.DataFrame(items)
 
@@ -57,9 +81,15 @@ def make_scatterplot(data, color_key, categories_to_show):
     legend_value_keys = list(legend_values.keys())
     legend_value_keys.sort(key=lambda x: legend_values[x], reverse=True)
 
-    category_keys = [re.sub(r" \[.*", "", legend_val) for legend_val in legend_value_keys]
-    category_to_color = dict([(x, _TABLEAU20_SCHEME[i % len(_TABLEAU20_SCHEME)])
-                              for i, x in enumerate(category_keys)])
+    category_keys = [
+        re.sub(r" \[.*", "", legend_val) for legend_val in legend_value_keys
+    ]
+    category_to_color = dict(
+        [
+            (x, _TABLEAU20_SCHEME[i % len(_TABLEAU20_SCHEME)])
+            for i, x in enumerate(category_keys)
+        ]
+    )
     # Override color for uncategorized to ensure it's grey
     category_to_color[app_config.UNCLUSTERED_NAME] = "lightgrey"
 
@@ -67,11 +97,12 @@ def make_scatterplot(data, color_key, categories_to_show):
     coloring_scheme = altair.Color(
         "GroupForLegend",
         type="nominal",
-        scale=altair.Scale(domain=legend_value_keys,
-                           range=[category_to_color[v] for v in category_keys])
+        scale=altair.Scale(
+            domain=legend_value_keys,
+            range=[category_to_color[v] for v in category_keys],
+        ),
     )
-    # color = altair.condition(altair.datum.GroupForLegend == unclustered_legend_value, altair.value('grey'), color)
-    
+
     color = altair.condition(selection, coloring_scheme, altair.value("white"))
 
     chart = (
