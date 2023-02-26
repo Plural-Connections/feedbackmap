@@ -3,6 +3,7 @@ from gensim.parsing.preprocessing import STOPWORDS
 import pandas as pd
 
 import random
+import re
 from collections import defaultdict
 
 import parse_csv
@@ -53,16 +54,22 @@ def dumb_segmenter_model():
 
 def get_top_phrases(data, grouping_key):
     sentences = [x["sentence"] for x in data]
-    sentences = [s.split() for s in sentences]
+    sentences = [re.split("\W+", s) for s in sentences]
 
     # Determine a set of words and phrases to use
     phrases = Phrases(
-        sentences, min_count=2, threshold=0.1, connector_words=ENGLISH_CONNECTOR_WORDS
+        sentences,
+        min_count=2,
+        threshold=0.1,
+        connector_words=frozenset(
+            list(ENGLISH_CONNECTOR_WORDS) + ["is", "are", "was", "I", "we", "it", "a"]
+        ),
     )
     res = []
     counts = defaultdict(lambda: (defaultdict(lambda: 0)))
     count_sums = defaultdict(lambda: 0)
     all_category_values = set()
+    norm = {}  # downcased -> first occurrence of string
     for i, sentence in enumerate(sentences):
         rec = data[i]["rec"]
         category_string = rec.get(grouping_key, "Unknown")
@@ -72,13 +79,18 @@ def get_top_phrases(data, grouping_key):
             count_sums[v] += 1
         for p in phrases[sentence]:
             if p.lower() not in STOPWORDS:
+                if p.lower() in norm:
+                    # This ensures we use just one casing (the first seen) of any term
+                    p = norm[p.lower()]
+                else:
+                    norm[p.lower()] = p
                 counts[p]["Total"] += 1
                 for v in categories_values:
                     counts[p][v] += 1
     table = []
 
     for term, c in counts.items():
-        if c["Total"] >= 5:
+        if c["Total"] >= 5 and len(term) > 2:
             table.append(
                 {
                     "Term": term.replace("_", " "),

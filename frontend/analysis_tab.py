@@ -14,15 +14,18 @@ _RESPONSE_RATE_TEXT = "Response rate for that question"
 
 
 @st.cache_data(persist=True)
-def embed_responses(df, q):
+def embed_responses(df, q, split_sentences=True):
     # Split raw responses into sentences and embed
     parent_records = []
     all_sentences = []
     all_embeddings = []
     for _, row in df.iterrows():
-        doc = app_config.CONFIG["nlp"](row[q])
-        for sent in doc.sents:
-            cleaned_sent = sent.text.strip()
+        if split_sentences:
+            doc = app_config.CONFIG["nlp"](row[q])
+            sentences = [sent.text.strip() for sent in doc.sents]
+        else:
+            sentences = [row[q].strip()]
+        for cleaned_sent in sentences:
             if cleaned_sent:
                 parent_records.append(dict(row))
                 all_sentences.append(cleaned_sent)
@@ -90,7 +93,7 @@ def top_words_table(data, grouping_key, categories):
     st.dataframe(
         phrase_df.style.highlight_max(
             color="lightgreen",
-            subset=[c for c in cols if c != app_config.UNCLUSTERED_NAME],
+            subset=[c for c in cols[:50] if c != app_config.UNCLUSTERED_NAME],
             axis=1,
         )
     )
@@ -130,6 +133,7 @@ def get_grouping_key_of_interest(categories):
 def run(columns_to_analyze, df, categories):
     util.hide_table_row_index()
     st.subheader(", ".join(columns_to_analyze))
+    split_sentences = False
     if len(df) > app_config.MAX_ROWS_FOR_ANALYSIS:
         st.warning(
             "We have sampled %d random rows from the data for the following analysis"
@@ -140,15 +144,22 @@ def run(columns_to_analyze, df, categories):
     with st.spinner():
         # Layout expanders
         overall_summary_expander = st.expander(
-            "Auto-generated summary of responses to the above question:", expanded=True
+            "**Auto-generated summary of responses to the above question:**",
+            expanded=True,
         )
         grouping_key = get_grouping_key_of_interest(categories)
+        split_sentences = st.checkbox(
+            "Treat each sentence separately?",
+            value=False,
+            help="If this is selected, one dot will be plotted below for each *sentence* in each response.  If it's not selected, one dot will be plotted per response.",
+        )
 
         # If CLUSTER_OPTION_TEXT is selected, we'll re-set this later.
         category_values = list(categories.get(grouping_key, {}).keys())
 
         scatterplot_expander = st.expander(
-            "Each dot represents a response sentence from the selected open-ended question.  Dots that are clustered together are likely to have similar meanings.",
+            "Each dot represents a %s from the selected open-ended question.  Dots that are clustered together are likely to have similar meanings."
+            % (split_sentences and "sentence" or "full response"),
             expanded=True,
         )
         top_words_expander = st.expander("**Top words and phrases**", expanded=False)
@@ -168,7 +179,9 @@ def run(columns_to_analyze, df, categories):
             with st.spinner():
                 data = []
                 for q in columns_to_analyze:
-                    sents, embs, parent_records, full_embs = embed_responses(df, q)
+                    sents, embs, parent_records, full_embs = embed_responses(
+                        df, q, split_sentences
+                    )
                     data.extend(
                         [
                             {
@@ -181,6 +194,7 @@ def run(columns_to_analyze, df, categories):
                     )
 
                 scatterplot_placeholder = st.empty()
+
                 if grouping_key == app_config.CLUSTER_OPTION_TEXT:
                     cluster_size = get_cluster_size(full_embs)
                     cluster_result = cluster_data(full_embs, cluster_size)
@@ -189,7 +203,8 @@ def run(columns_to_analyze, df, categories):
                         cluster_label_counts[cluster_result[i]] += 1
                         x["rec"][app_config.CLUSTER_OPTION_TEXT] = cluster_result[i]
 
-                    # Rewrite df to be based on the sentences, rather than responses
+                    # Rewrite df to be based on the scatterplot data
+                    # (which might have been split by sentence.)
                     df = pd.DataFrame([x["rec"] for x in data])
                     category_values = list(cluster_label_counts.keys())
                     categories[app_config.CLUSTER_OPTION_TEXT] = dict(
