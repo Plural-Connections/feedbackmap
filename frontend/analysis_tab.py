@@ -147,27 +147,25 @@ def run(columns_to_analyze, df, categories):
             "**Auto-generated summary of responses to the above question:**",
             expanded=True,
         )
-        grouping_key = get_grouping_key_of_interest(categories)
-        split_sentences = st.checkbox(
-            "Treat each sentence separately?",
-            value=False,
-            help="If this is selected, one dot will be plotted below for each *sentence* in each response.  If it's not selected, one dot will be plotted per response.",
-        )
+        with st.expander("**Configuration for the analysis below**", expanded=True):
+            grouping_key = get_grouping_key_of_interest(categories)
+            if grouping_key == app_config.CLUSTER_OPTION_TEXT:
+                st_cluster_size = st.empty()
+            split_sentences = st.checkbox(
+                "Treat each sentence separately?",
+                value=False,
+                help="If this is selected, one dot will be plotted below for each *sentence* in each response.  If it's not selected, one dot will be plotted per response.",
+            )
 
         # If CLUSTER_OPTION_TEXT is selected, we'll re-set this later.
         category_values = list(categories.get(grouping_key, {}).keys())
 
         scatterplot_expander = st.expander(
-            "Each dot represents a %s from the selected open-ended question.  Dots that are clustered together are likely to have similar meanings."
-            % (split_sentences and "sentence" or "full response"),
+            "**Topic map**",
             expanded=True,
         )
-        top_words_expander = st.expander("**Top words and phrases**", expanded=False)
-        value_table_expander = st.expander(
-            '**Summary of responses broken down by answers to the categorical question:** "%s"'
-            % (grouping_key),
-            expanded=True,
-        )
+        top_words_expander = st.expander("**Top words and phrases**", expanded=True)
+        value_table_expander = st.expander("**Categorical breakdown**", expanded=True)
 
         # Overall summary
         with overall_summary_expander:
@@ -176,6 +174,10 @@ def run(columns_to_analyze, df, categories):
 
         # Compute embeddings and plot scatterplot
         with scatterplot_expander:
+            st.write(
+                "Each dot below represents a %s from the selected open-ended question.  Dots that are close together are likely to have similar meanings."
+                % (split_sentences and "sentence" or "full response")
+            )
             with st.spinner():
                 data = []
                 for q in columns_to_analyze:
@@ -196,7 +198,8 @@ def run(columns_to_analyze, df, categories):
                 scatterplot_placeholder = st.empty()
 
                 if grouping_key == app_config.CLUSTER_OPTION_TEXT:
-                    cluster_size = get_cluster_size(full_embs)
+                    with st_cluster_size:
+                        cluster_size = get_cluster_size(full_embs)
                     cluster_result = cluster_data(full_embs, cluster_size)
                     cluster_label_counts = defaultdict(lambda: 0)
                     for i, x in enumerate(data):
@@ -232,6 +235,11 @@ def run(columns_to_analyze, df, categories):
 
         # Per-value summary table
         with value_table_expander:
+            st.write(
+                'Below is a summary of %s broken down by answers to the categorical question: "%s"'
+                % ((split_sentences and "sentence" or "full response"), grouping_key)
+            )
+
             table = []
             cluster_prompt = get_cluster_prompt()
             summaries = app_config.CONFIG["llm"].get_summaries(
