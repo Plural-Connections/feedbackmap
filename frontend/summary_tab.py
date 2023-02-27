@@ -1,26 +1,33 @@
 import app_config
 import streamlit as st
+import logger
 
 
 def run(df, text_response_columns, categories):
     st.write(
-        "Processed **%d** responses with **%d** text response questions and **%d** categorical questions"
+        "Processed **%d** responses with **%d** open-ended text response questions and **%d** categorical questions."
         % (len(df), len(text_response_columns), len(categories))
     )
-    st.write(
-        "Click a text response button below to analyze the results for a specific question."
+    st.markdown(
+        "#### Select an open-ended question that you'd like to analyze responses for:"
     )
-    st.subheader("Text response questions:")
+    # st.subheader("Text response questions:")
     buttons = {}
     for k, v in text_response_columns.items():
         btn_col, info_col = st.columns(2)
         with btn_col:
-            buttons[k] = st.button(k, use_container_width=True, type="primary")
+            buttons[k] = st.button(
+                k,
+                use_container_width=True,
+                type="primary",
+                on_click=logger.log,
+                kwargs=dict(action="SELECTING_OPEN_ENDED_QUESTION"),
+            )
         with info_col:
             st.write(
                 "%0.1f%% response rate" % (100.0 * (1.0 - (v.get("", 0.0) / len(df))))
             )
-    st.subheader("Categorical questions:")
+    st.markdown("#### Here are the categorical questions from your survey:")
     for k, v in categories.items():
         q_col, info_col = st.columns(2)
         with q_col:
@@ -31,7 +38,7 @@ def run(df, text_response_columns, categories):
             )
         with info_col:
             st.write(
-                "%d different values\\\n%0.2f selections per response"
+                "%d different values seen\\\n%0.2f selections per response"
                 % (len(v), sum(v.values()) / len(df))
             )
 

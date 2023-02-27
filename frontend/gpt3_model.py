@@ -10,7 +10,7 @@ from multiprocessing import Pool
 
 import app_config
 
-_MAX_SAMPLE_SIZE = 50
+_MAX_SAMPLE_SIZE = 100
 
 # For parallelizing value-specific summary queries.  Check GPT-3 API rate limit.
 _NUM_PROCESSES = 10
@@ -35,9 +35,7 @@ class OfflineModel:
                 len(examples)
             )
 
-    def get_summary(
-        self, df, column, facet_column=None, facet_val=None, short_prompt=False
-    ):
+    def get_summary(self, df, column, facet_column=None, facet_val=None, prompt=None):
         examples = self.prompt_examples(df, column, facet_column, facet_val)
         return {
             "instructions": "No GPT-3 model available",
@@ -49,7 +47,7 @@ class OfflineModel:
         }
 
     def get_summaries(
-        self, df, question_column, facet_column, facet_values, short_prompt=False
+        self, df, question_column, facet_column, facet_values, prompt=None
     ):
         return [
             self.get_summary(df, question_column, facet_column, x) for x in facet_values
@@ -58,21 +56,30 @@ class OfflineModel:
 
 class LiveGptModel(OfflineModel):
     def get_summary(
-            self, df, column, facet_column=None, facet_val=None, short_prompt=False
+        self,
+        df,
+        column,
+        facet_column=None,
+        facet_val=None,
+        prompt=app_config.DEFAULT_PROMPT,
     ):
-        model = (short_prompt and app_config.GPT3_MODEL_SHORT or app_config.GPT3_MODEL_LONG)
-        preamble = 'Here are some responses to the question "%s"' % (column)
-        if short_prompt:
-            instructions = app_config.GPT3_PROMPT_SHORT
+        model = app_config.PROMPTS[prompt]["model"]
+        if column == app_config.COLUMN_NAME_FOR_TEXT_FILES:
+            # For single-column text files, do not label the examples
+            preamble = ""
         else:
-            instructions = app_config.GPT3_PROMPT_LONG
+            preamble = 'Here are some responses to the question "%s":\n' % (column)
+        instructions = app_config.PROMPTS[prompt]["prompt"]
         nonempty_responses = self.prompt_examples(df, column, facet_column, facet_val)
-        max_words = app_config.MAX_TOKENS[model] / 1.3 - len(preamble) - len(instructions)
+        # See https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them
+        max_words = (
+            app_config.MAX_TOKENS[model] / 1.5 - len(preamble) - len(instructions) - 500
+        )
 
         examples = None
 
         max_sample_size = _MAX_SAMPLE_SIZE
-        while (examples is None or len("\n".join(examples).split()) > max_words):
+        while examples is None or len("\n".join(examples).split()) > max_words:
             examples = nonempty_responses.sample(
                 min(max_sample_size, len(nonempty_responses)), random_state=42
             )
@@ -81,14 +88,14 @@ class LiveGptModel(OfflineModel):
         if len(examples) <= 1:
             answer = self.canned_answer(examples)
         else:
-            prompt = (
+            prompt_str = (
                 preamble
                 + "\n".join([("- " + s) for s in examples])
                 + "\n\n"
                 + instructions
                 + "\n"
             )
-            response = run_completion_query(prompt, model = model)
+            response = run_completion_query(prompt_str, model=model)
             answer = set([c["text"] for c in response["choices"]])
             answer = "\n".join(list(answer))
         return {
@@ -101,15 +108,18 @@ class LiveGptModel(OfflineModel):
         }
 
     def get_summaries(
-        self, df, question_column, facet_column, facet_values, short_prompt=False
+        self,
+        df,
+        question_column,
+        facet_column,
+        facet_values,
+        prompt=app_config.DEFAULT_PROMPT,
     ):
         """Get a summary for each value of a facet."""
         if True:
             # Serial
             return [
-                self.get_summary(
-                    df, question_column, facet_column, x, short_prompt=short_prompt
-                )
+                self.get_summary(df, question_column, facet_column, x, prompt=prompt)
                 for x in facet_values
             ]
         else:
@@ -123,7 +133,7 @@ class LiveGptModel(OfflineModel):
                             repeat(question_column),
                             repeat(facet_column),
                             facet_values,
-                            repeat(short_prompt),
+                            repeat(prompt),
                         ),
                     )
                 )
