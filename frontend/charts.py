@@ -107,7 +107,7 @@ def make_scatterplot(data, color_key, categories_to_show):
 
     chart = (
         (
-            altair.Chart(df, height=400, width=1200)
+            altair.Chart(df, height=400, width=1000)
             .mark_circle(size=80, opacity=1.0)
             .encode(
                 x=altair.X("x", axis=None, scale=altair.Scale(zero=False)),

@@ -1,3 +1,4 @@
+
 from gensim.models.phrases import Phrases, ENGLISH_CONNECTOR_WORDS
 from gensim.parsing.preprocessing import STOPWORDS
 import pandas as pd
@@ -7,9 +8,6 @@ import re
 from collections import defaultdict
 
 import parse_csv
-
-import streamlit as st
-
 
 def get_config(mock_mode):
     """If mock_mode is set, don't load any NLP libraries."""

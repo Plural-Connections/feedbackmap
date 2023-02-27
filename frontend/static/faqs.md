@@ -2,7 +2,7 @@
 
 At the moment, the language models powering Feedback Map are most accurate on/relevant for English texts only.  We hope to add in support for other languages as we grow our team.    
 
-2. **Can I import outputs from other survey platforms beyond Google Surveys?**
+2. **Can I import outputs from other survey platforms beyond Google Forms?**
 
 You can, but there's no guarantee it will work :)  For now, we've designed Feedback Map to primarily support analysis of Google Survey outputs, but also hope to support other formats in the future.
 
