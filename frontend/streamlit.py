@@ -20,8 +20,9 @@ def get_config(mock_mode):
 
 
 def streamlit_app():
-    st.set_page_config(page_title=app_config.TITLE, layout="wide")
-    st.title(app_config.TITLE)
+    st.set_page_config(page_title=app_config.TITLE, page_icon=app_config.ICON,
+                       layout="wide")
+    st.title(app_config.ICON + " " + app_config.TITLE)
     app_config.CONFIG.update(get_config(app_config.MOCK_MODE))
     columns_to_analyze = None
     df = None

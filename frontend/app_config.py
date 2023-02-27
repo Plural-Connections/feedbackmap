@@ -5,6 +5,8 @@ CONFIG = {}
 CLUSTER_OPTION_TEXT = "Auto-cluster based on the topic of the response text"
 
 TITLE = "Feedback Map"
+ICON = ":pencil:"
+
 CATEGORICAL_QUESTIONS_BGCOLOR = "lightyellow"
 MAX_VALUES_TO_SUMMARIZE = 20
 QUALTRICS_SURVEY_URL = "https://neu.co1.qualtrics.com/jfe/form/SV_eyQf1JSVWeVhx1I"
@@ -13,6 +15,12 @@ SURVEY_CSS = "<style> .big-font { font-size:30px !important ; padding: 5px; back
 # Set to true to run without transformers or spacy
 MOCK_MODE = False
 
+UNCLUSTERED_NAME = "Unclustered"
+
+# Number of additional categories (other than the one of interest) to show on
+# tooltips in the topic scatterplot on the analysis tab
+MAX_CATEGORIES_ON_TOOLTIP = 3
+
 # Set to false if you don't have an OpenAI API key.  This will cause
 # placeholders to be printed for the summarization features.
 USE_GPT3 = True
@@ -20,20 +28,21 @@ USE_GPT3 = True
 PROMPTS = {
     "One sentence summary": {
         "prompt": "Summarize these responses in one sentence.",
-        "model": "text-davinci-003"
+        "model": "text-davinci-003",
     },
     "Three words": {
         "prompt": "Summarize these responses in three words.",
-        "model": "text-davinci-003"
+        #        "model": "text-davinci-003"
+        "model": "text-curie-001",
     },
     "Three adjectives": {
         "prompt": "What three adjectives best describe these responses?",
-        "model": "text-davinci-003"
+        "model": "text-davinci-003",
     },
     "Paragraph summary": {
         "prompt": "Briefly summarize these responses.",
-        "model": "text-davinci-003"
-    }
+        "model": "text-davinci-003",
+    },
 }
 
 DEFAULT_PROMPT = "Paragraph summary"

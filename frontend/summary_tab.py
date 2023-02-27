@@ -31,7 +31,7 @@ def run(df, text_response_columns, categories):
             )
         with info_col:
             st.write(
-                "%d different values\\\n%0.2f selections per response"
+                "%d different values seen\\\n%0.2f selections per response"
                 % (len(v), sum(v.values()) / len(df))
             )
 

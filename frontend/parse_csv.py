@@ -1,7 +1,7 @@
 #!/user/bin/env python3
 
 """
-Logic related to understanding the survey CSVs;  no streamlit in here.
+Logic related to understanding the survey inputs;  no streamlit in here.
 """
 
 from collections import defaultdict
@@ -19,10 +19,6 @@ _SKIP_COLUMNS = ["Timestamp"]
 # If a row has more than this many unique values (relative to total)
 # consider it to be a free-response text field
 _MAX_FRACTION_FOR_CATEGORICAL = 0.2
-
-
-def process_csv(uploaded_file):
-    return df
 
 def process_file(uploaded_file):
     table = []
