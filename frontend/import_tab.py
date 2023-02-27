@@ -2,11 +2,14 @@ import streamlit as st
 
 import parse_csv
 import util
+import logger
 
 
 def run(current_csv_file_df):
     util.include_markdown("welcome")
-    new_csv_file = st.file_uploader("")
+    new_csv_file = st.file_uploader(
+        "", on_change=logger.log, kwargs=dict(action="UPLOADING_FILE")
+    )
     if new_csv_file:
         try:
             df = parse_csv.process_file(new_csv_file)

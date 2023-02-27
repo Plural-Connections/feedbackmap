@@ -9,7 +9,7 @@ ICON = ":pencil:"
 
 CATEGORICAL_QUESTIONS_BGCOLOR = "lightyellow"
 MAX_VALUES_TO_SUMMARIZE = 20
-QUALTRICS_SURVEY_URL = "https://neu.co1.qualtrics.com/jfe/form/SV_eyQf1JSVWeVhx1I"
+SURVEY_URL = "https://forms.gle/36usGykgjnR1HKma7"
 SURVEY_CSS = "<style> .big-font { font-size:30px !important ; padding: 5px; background-color: lightgreen; } </style>"
 
 # Set to true to run without transformers or spacy

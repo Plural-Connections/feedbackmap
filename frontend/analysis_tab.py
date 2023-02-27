@@ -9,6 +9,7 @@ import app_config
 import charts
 import local_models
 import util
+import logger
 
 _RESPONSE_RATE_TEXT = "Response rate for that question"
 
@@ -71,7 +72,7 @@ def survey_teaser():
     st.markdown(
         app_config.SURVEY_CSS
         + '<p class="big-font">Was this helpful? <a href="%s" target="_blank">Share your feedback on Feedback Map!</p>'
-        % (app_config.QUALTRICS_SURVEY_URL),
+        % (app_config.SURVEY_URL),
         unsafe_allow_html=True,
     )
 
@@ -183,6 +184,10 @@ def get_cluster_size(full_embs):
         cluster_size_choices,
         cluster_size_choices.index(default_cluster_size),
     )
+    logger.log(
+        action="SETTING_MIN_CLUSTER_SIZE",
+        extra_data={"cluster_size": cluster_size},
+    )
     return cluster_size
 
 
@@ -190,6 +195,10 @@ def get_cluster_prompt():
     cluster_prompt = st.selectbox(
         "You can customize what kind of summary is generated.",
         [k for k in app_config.PROMPTS],
+    )
+    logger.log(
+        action="SETTING_CLUSTER_PROMPT",
+        extra_data={"cluster_prompt": cluster_prompt},
     )
     return cluster_prompt
 
@@ -205,6 +214,7 @@ def get_grouping_key_of_interest(categories):
         ),
         index=0,
     )
+    logger.log(action="SETTING_GROUPING")
     return res
 
 
@@ -231,6 +241,8 @@ def run(columns_to_analyze, df, categories):
             "Treat each sentence separately?",
             value=False,
             help="If this is selected, one dot will be plotted below for each *sentence* in each response.  If it's not selected, one dot will be plotted per response.",
+            on_change=logger.log,
+            kwargs=dict(action="TREAT_SENTENCES_SEPARATELY"),
         )
 
     # If CLUSTER_OPTION_TEXT is selected, we'll re-set this later.

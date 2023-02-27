@@ -11,6 +11,8 @@ import gpt3_model
 import local_models
 import parse_csv
 
+import logger
+
 
 @st.cache_resource
 def get_config(mock_mode):
@@ -20,10 +22,13 @@ def get_config(mock_mode):
 
 
 def streamlit_app():
-    st.set_page_config(page_title=app_config.TITLE, page_icon=app_config.ICON,
-                       layout="wide")
+    st.set_page_config(
+        page_title=app_config.TITLE, page_icon=app_config.ICON, layout="wide"
+    )
     st.title(app_config.ICON + " " + app_config.TITLE)
     app_config.CONFIG.update(get_config(app_config.MOCK_MODE))
+    logger.init()
+    logger.log(action="APP_LOADED")
     columns_to_analyze = None
     df = None
 
