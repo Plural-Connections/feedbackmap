@@ -3,6 +3,8 @@
 """
 Generates fake survey data for people in different states
 by asking GPT-3 the prompt below.   
+
+Sample output is in ./fake_survey.csv
 """
 
 import csv
