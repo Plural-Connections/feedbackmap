@@ -40,7 +40,7 @@ def process_file(uploaded_file):
             for line in stringio:
                 table.append({app_config.COLUMN_NAME_FOR_TEXT_FILES: line})
 
-    return pd.DataFrame(table, dtype=str)
+    return pd.DataFrame(table, dtype=str).fillna("")
 
 def infer_column_types(df):
     categories = {}  # column -> val_dict
@@ -48,9 +48,10 @@ def infer_column_types(df):
     for column in df.columns:
         if column not in _SKIP_COLUMNS:
             val_dict = val_dictionary_for_column(df, column)
-            # If it's got more than _MAX_FRACTION_FOR_CATEGORICAL * numrows different vals,
-            # consider it a text response field, otherwise it's a categorical attribute
-            if len(val_dict) < _MAX_FRACTION_FOR_CATEGORICAL * len(df.index):
+            # If the fraction of nonempty responses that are unique values is more than
+            # _MAX_FRACTION_FOR_CATEGORICAL, consider it to be a text response field,
+            # otherwise consider it to be a categorical attribute
+            if len(val_dict) < _MAX_FRACTION_FOR_CATEGORICAL * len(df[df[column] != '']):
                 categories[column] = val_dict
             else:
                 text_responses[column] = val_dict
