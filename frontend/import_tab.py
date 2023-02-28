@@ -19,8 +19,10 @@ def run(current_csv_file_df):
             df = None
         if df is not None and not df.equals(current_csv_file_df):
             st.session_state["uploaded"] = df
-            if "analyze" in st.session_state:
-                del st.session_state["analyze"]
+            for x in ["analyze", "categories", "grouping_key",
+                      "text_response_columns"]:
+                if x in st.session_state:
+                    del st.session_state[x]
             st.experimental_rerun()  # TODO: why doesn't it open 1st tab here?
     with st.expander("About + Privacy", expanded=False):
         util.include_markdown("about")
