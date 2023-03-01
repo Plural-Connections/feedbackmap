@@ -4,6 +4,14 @@ import logger
 
 
 def run(df, text_response_columns, categories):
+    logger.log(
+        action="DATA_STATS",
+        extra_data={
+            "num_responses": len(df),
+            "num_open_ended_questions": len(text_response_columns),
+            "num_categorical_questions": len(categories),
+        },
+    )
     st.write(
         "Processed **%d** responses with **%d** open-ended text response questions and **%d** categorical questions."
         % (len(df), len(text_response_columns), len(categories))
