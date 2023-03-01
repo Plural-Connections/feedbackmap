@@ -32,6 +32,10 @@ def streamlit_app():
     columns_to_analyze = None
     df = None
 
+    # See https://discuss.streamlit.io/t/mini-tutorial-initializing-widget-values-and-getting-them-to-stick-without-double-presses/31391/4
+    if 'grouping_key' in st.session_state:
+        st.session_state["grouping_key"] = st.session_state["grouping_key"]
+
     if "analyze" in st.session_state:
         columns_to_analyze = st.session_state["analyze"]
     if "uploaded" in st.session_state:
@@ -53,8 +57,14 @@ def streamlit_app():
         import_tab.run(df)
 
     if df is not None:
-        with st.spinner():
-            categories, text_response_columns = parse_csv.infer_column_types(df)
+        if "categories" in st.session_state and "text_response_columns" in st.session_state:
+            categories = st.session_state["categories"]
+            text_response_columns = st.session_state["text_response_columns"]
+        else:
+            with st.spinner():
+                categories, text_response_columns = parse_csv.infer_column_types(df)
+                st.session_state["categories"] = categories
+                st.session_state["text_response_columns"] = text_response_columns
         with summary_tab_st:
             summary_tab.run(df, text_response_columns, categories)
 

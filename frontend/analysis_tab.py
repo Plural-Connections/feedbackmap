@@ -166,6 +166,7 @@ def top_words_table(data, grouping_key, categories):
         cols.sort(key=lambda x: categories[grouping_key].get(x, 0), reverse=True)
     phrase_df = phrase_df[["Term", "Total"] + cols]
     # TODO:  Color the header columns according to the chart.   Hide index.
+
     st.dataframe(
         phrase_df.style.highlight_max(
             color="lightgreen",
@@ -177,7 +178,7 @@ def top_words_table(data, grouping_key, categories):
 
 def get_cluster_size(full_embs):
     default_cluster_size = max(5, len(full_embs) // 500)
-    cluster_size_choices = list(set([5, 10, 20, 50, 100] + [default_cluster_size]))
+    cluster_size_choices = list(set([3, 5, 10, 20, 50, 100] + [default_cluster_size]))
     cluster_size_choices.sort()
     cluster_size = st.selectbox(
         "Minimum size of auto-generated clusters",
@@ -212,7 +213,7 @@ def get_grouping_key_of_interest(categories):
             and x
             or ("Group by answer to: " + str(x))
         ),
-        index=0,
+        key = "grouping_key"
     )
     logger.log(action="SETTING_GROUPING")
     return res
@@ -230,11 +231,12 @@ def run(columns_to_analyze, df, categories):
 
     # Layout expanders
     overall_summary_expander = st.expander(
-        "**Auto-generated summary of responses to the above question:**",
+        "**Auto-generated summary of responses to the above question**",
         expanded=True,
     )
     with st.expander("**Configuration for the analysis below**", expanded=True):
-        grouping_key = get_grouping_key_of_interest(categories)
+        get_grouping_key_of_interest(categories)
+        grouping_key = st.session_state["grouping_key"]
         if grouping_key == app_config.CLUSTER_OPTION_TEXT:
             st_cluster_size = st.empty()
         split_sentences = st.checkbox(
