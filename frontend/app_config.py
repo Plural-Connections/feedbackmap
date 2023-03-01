@@ -30,9 +30,10 @@ PROMPTS = {
         "prompt": "Summarize these responses in one sentence.",
         "model": "text-davinci-003",
     },
-    "Five words": {
-        "prompt": "Summarize these responses in no more than five words.",
-        "model": "text-davinci-003"
+    "Three words": {
+        "prompt": "Summarize these responses in three words.",
+        #        "model": "text-davinci-003"
+        "model": "text-curie-001",
     },
     "Three adjectives": {
         "prompt": "What three adjectives best describe these responses?",
