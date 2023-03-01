@@ -10,6 +10,7 @@ def run(current_csv_file_df):
     new_csv_file = st.file_uploader(
         "", on_change=logger.log, kwargs=dict(action="UPLOADING_FILE")
     )
+    st.video("https://www.youtube.com/watch?v=D42g_JPJED0")
     if new_csv_file:
         try:
             df = parse_csv.process_file(new_csv_file)
@@ -19,6 +20,7 @@ def run(current_csv_file_df):
             df = None
         if df is not None and not df.equals(current_csv_file_df):
             st.session_state["uploaded"] = df
+            st.session_state["uploaded_file"] = new_csv_file
             for x in ["analyze", "categories", "grouping_key",
                       "text_response_columns"]:
                 if x in st.session_state:
