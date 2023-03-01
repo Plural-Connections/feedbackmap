@@ -44,12 +44,17 @@ def streamlit_app():
     # Arrange tabs
     tab_placeholder = st.empty()
     with tab_placeholder:
+        if "uploaded_file" in st.session_state:
+            summary_title = "Summary (%s)" % (
+                st.session_state["uploaded_file"].name)
+        else:
+            summary_title = ""
         if "analyze" in st.session_state:
             analyze_tab_st, summary_tab_st, import_tab_st = st.tabs(
-                ["Response analysis", "Summary", "Welcome"]
+                ["Response analysis", summary_title, "Welcome"]
             )
         elif "uploaded" in st.session_state:
-            summary_tab_st, import_tab_st = st.tabs(["Summary", "Welcome"])
+            summary_tab_st, import_tab_st = st.tabs([summary_title, "Welcome"])
         else:
             import_tab_st = st.tabs(["Welcome"])[0]
 
