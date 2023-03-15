@@ -213,7 +213,7 @@ def get_grouping_key_of_interest(categories):
             and x
             or ("Group by answer to: " + str(x))
         ),
-        key = "grouping_key"
+        key="grouping_key",
     )
     logger.log(action="SETTING_GROUPING")
     return res
@@ -232,6 +232,10 @@ def run(columns_to_analyze, df, categories):
     # Layout expanders
     overall_summary_expander = st.expander(
         "**Auto-generated summary of responses to the above question**",
+        expanded=True,
+    )
+    interesting_examples_summary_expander = st.expander(
+        "**Some interesting responses (AI-selected)**",
         expanded=True,
     )
     with st.expander("**Configuration for the analysis below**", expanded=True):
@@ -261,6 +265,14 @@ def run(columns_to_analyze, df, categories):
     with overall_summary_expander:
         with st.spinner():
             res = app_config.CONFIG["llm"].get_summary(df, columns_to_analyze[0])
+            st.write("%s" % (res["answer"]))
+
+    # Overall summary
+    with interesting_examples_summary_expander:
+        with st.spinner():
+            res = app_config.CONFIG["llm"].get_summary(
+                df, columns_to_analyze[0], prompt="Most unusual responses"
+            )
             st.write("%s" % (res["answer"]))
 
     # Compute embeddings and plot scatterplot

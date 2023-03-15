@@ -28,20 +28,23 @@ USE_GPT3 = True
 PROMPTS = {
     "One sentence summary": {
         "prompt": "Summarize these responses in one sentence.",
-        "model": "text-davinci-003",
+        "model": "gpt-3.5-turbo-0301",
     },
     "Three words": {
         "prompt": "Summarize these responses in three words.",
-        #        "model": "text-davinci-003"
-        "model": "text-curie-001",
+        "model": "gpt-3.5-turbo-0301",
+    },
+    "Most unusual responses": {
+        "prompt": "What are 3 interesting responses and why?",
+        "model": "gpt-3.5-turbo-0301",
     },
     "Three adjectives": {
         "prompt": "What three adjectives best describe these responses?",
-        "model": "text-davinci-003",
+        "model": "gpt-3.5-turbo-0301",
     },
     "Paragraph summary": {
         "prompt": "Briefly summarize these responses.",
-        "model": "text-davinci-003",
+        "model": "gpt-3.5-turbo-0301",
     },
 }
 
@@ -49,7 +52,7 @@ DEFAULT_PROMPT = "Paragraph summary"
 
 
 # See https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them
-MAX_TOKENS = {"text-curie-001": 2048, "text-davinci-003": 4096}
+MAX_TOKENS = {"text-davinci-003": 4096, "gpt-3.5-turbo-0301": 4096}
 
 # The maximum number of rows for the sentence embedding scatterplot.
 # For larger data sets, rows will be randomly sampled to select the data to plot.
