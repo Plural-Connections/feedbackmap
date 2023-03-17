@@ -25,6 +25,9 @@ MAX_CATEGORIES_ON_TOOLTIP = 3
 # placeholders to be printed for the summarization features.
 USE_GPT3 = True
 
+DEFAULT_PROMPT = "Paragraph summary"
+UNUSUAL_PROMPT = "Most unusual responses"
+
 PROMPTS = {
     "One sentence summary": {
         "prompt": "Summarize these responses in one sentence.",
@@ -34,7 +37,7 @@ PROMPTS = {
         "prompt": "Summarize these responses in three words.",
         "model": "gpt-3.5-turbo-0301",
     },
-    "Most unusual responses": {
+    UNUSUAL_PROMPT: {
         "prompt": "What are 3 interesting responses and why?",
         "model": "gpt-3.5-turbo-0301",
     },
@@ -42,13 +45,11 @@ PROMPTS = {
         "prompt": "What three adjectives best describe these responses?",
         "model": "gpt-3.5-turbo-0301",
     },
-    "Paragraph summary": {
+    DEFAULT_PROMPT: {
         "prompt": "Briefly summarize these responses.",
         "model": "gpt-3.5-turbo-0301",
     },
 }
-
-DEFAULT_PROMPT = "Paragraph summary"
 
 
 # See https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them
