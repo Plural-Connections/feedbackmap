@@ -148,14 +148,25 @@ def run_completion_query(prompt, model="text-davinci-003", num_to_generate=1):
     tries = 0
     while tries < 3:
         try:
-            response = openai.Completion.create(
-                model=model,
-                prompt=prompt,
-                temperature=0.0,
-                n=num_to_generate,
-                stop=["\n\n"],
-                max_tokens=300,
-            )
+            if model.startswith("gpt"):
+                # It's one of the chat-tuned models
+                response = openai.ChatCompletion.create(
+                    model=model,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.0,
+                    max_tokens=300,
+                )
+                # Hack: Move the response text to the old API's expected location
+                response["choices"][0]["text"] = response["choices"][0]["message"]["content"]
+            else:
+                response = openai.Completion.create(
+                    model=model,
+                    prompt=prompt,
+                    temperature=0.0,
+                    n=num_to_generate,
+                    stop=["\n\n"],
+                    max_tokens=300,
+                )
             return response
         except (openai.error.RateLimitError, openai.error.APIError) as e:
             st.write(e)

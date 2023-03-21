@@ -213,7 +213,7 @@ def get_grouping_key_of_interest(categories):
             and x
             or ("Group by answer to: " + str(x))
         ),
-        key = "grouping_key"
+        key="grouping_key",
     )
     logger.log(action="SETTING_GROUPING")
     return res
@@ -252,6 +252,11 @@ def run(columns_to_analyze, df, categories):
 
     scatterplot_expander = st.expander(
         "**Topic map**",
+        expanded=True,
+    )
+    interesting_examples_summary_expander = st.expander(
+        '**Some interesting responses (AI-selected, using the prompt: "%s")**'
+        % (app_config.PROMPTS[app_config.UNUSUAL_PROMPT]["prompt"]),
         expanded=True,
     )
     value_table_expander = st.expander("**Categorical breakdown**", expanded=True)
@@ -312,19 +317,27 @@ def run(columns_to_analyze, df, categories):
         # Sort category values by popularity
         category_values.sort(key=lambda x: categories[grouping_key][x], reverse=True)
 
-        # Per-value summary table
-        with value_table_expander:
-            value_summary_table(
-                df,
-                columns_to_analyze,
-                grouping_key,
-                categories,
-                category_values,
-                color_scheme,
-                split_sentences,
+    # "Interesting responses" summary
+    with interesting_examples_summary_expander:
+        with st.spinner():
+            res = app_config.CONFIG["llm"].get_summary(
+                df, columns_to_analyze[0], prompt=app_config.UNUSUAL_PROMPT
             )
+            st.write("%s" % (res["answer"]))
 
-        # Top words and phrases
-        with top_words_expander:
-            top_words_table(data, grouping_key, categories)
-            survey_teaser()
+    # Per-value summary table
+    with value_table_expander:
+        value_summary_table(
+            df,
+            columns_to_analyze,
+            grouping_key,
+            categories,
+            category_values,
+            color_scheme,
+            split_sentences,
+        )
+
+    # Top words and phrases
+    with top_words_expander:
+        top_words_table(data, grouping_key, categories)
+        survey_teaser()
