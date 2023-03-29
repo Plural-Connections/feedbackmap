@@ -30,7 +30,7 @@ UNUSUAL_PROMPT = "Most unusual responses"
 
 PROMPTS = {
     "One sentence summary": {
-        "prompt": "Summarize these responses in one sentence.",
+        "prompt": "In one sentence, what do these responses have in common?",
         "model": "gpt-3.5-turbo-0301",
     },
     "Three words": {
@@ -46,7 +46,7 @@ PROMPTS = {
         "model": "gpt-3.5-turbo-0301",
     },
     DEFAULT_PROMPT: {
-        "prompt": "Briefly summarize these responses.",
+        "prompt": "Briefly, what do these responses have in common?",
         "model": "gpt-3.5-turbo-0301",
     },
 }

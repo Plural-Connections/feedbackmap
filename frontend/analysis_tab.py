@@ -231,7 +231,8 @@ def run(columns_to_analyze, df, categories):
 
     # Layout expanders
     overall_summary_expander = st.expander(
-        "**Auto-generated summary of responses to the above question**",
+        "**Auto-generated summary of responses to the above question**.  Prompt: %s" % (
+            app_config.PROMPTS[app_config.DEFAULT_PROMPT]["prompt"]),
         expanded=True,
     )
     with st.expander("**Configuration for the analysis below**", expanded=True):
