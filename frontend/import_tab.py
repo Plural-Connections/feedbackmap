@@ -21,8 +21,7 @@ def run(current_csv_file_df):
         if df is not None and not df.equals(current_csv_file_df):
             st.session_state["uploaded"] = df
             st.session_state["uploaded_file"] = new_csv_file
-            for x in ["analyze", "categories", "grouping_key",
-                      "text_response_columns"]:
+            for x in ["analyze", "categories", "grouping_key", "text_response_columns"]:
                 if x in st.session_state:
                     del st.session_state[x]
             st.experimental_rerun()  # TODO: why doesn't it open 1st tab here?

@@ -20,6 +20,7 @@ _SKIP_COLUMNS = ["Timestamp"]
 # consider it to be a free-response text field
 _MAX_FRACTION_FOR_CATEGORICAL = 0.2
 
+
 def process_file(uploaded_file):
     table = []
     stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
@@ -34,13 +35,19 @@ def process_file(uploaded_file):
             table.append(json.loads(line))
     else:
         try:
-            return pd.read_csv(uploaded_file, dtype=str).fillna("")
+            df = pd.read_csv(uploaded_file, dtype=str).fillna("")
+            df.columns = df.columns.str.replace("\n", "--")
+            return df
+
         except Exception as e:
             table.append({app_config.COLUMN_NAME_FOR_TEXT_FILES: first_line})
             for line in stringio:
                 table.append({app_config.COLUMN_NAME_FOR_TEXT_FILES: line})
 
-    return pd.DataFrame(table, dtype=str).fillna("")
+    df = pd.DataFrame(table, dtype=str).fillna("")
+    df.columns = df.columns.str.replace("\n", "--")
+    return df
+
 
 def infer_column_types(df):
     categories = {}  # column -> val_dict
@@ -51,7 +58,9 @@ def infer_column_types(df):
             # If the fraction of nonempty responses that are unique values is more than
             # _MAX_FRACTION_FOR_CATEGORICAL, consider it to be a text response field,
             # otherwise consider it to be a categorical attribute
-            if len(val_dict) < _MAX_FRACTION_FOR_CATEGORICAL * len(df[df[column] != '']):
+            if len(val_dict) < _MAX_FRACTION_FOR_CATEGORICAL * len(
+                df[df[column] != ""]
+            ):
                 categories[column] = val_dict
             else:
                 text_responses[column] = val_dict
