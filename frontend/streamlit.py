@@ -32,7 +32,7 @@ def streamlit_app():
     columns_to_analyze = None
     df = None
 
-    # st.runtime.legacy_caching.caching.clear_cache()
+    st.runtime.legacy_caching.caching.clear_cache()
 
     # See https://discuss.streamlit.io/t/mini-tutorial-initializing-widget-values-and-getting-them-to-stick-without-double-presses/31391/4
     if "grouping_key" in st.session_state:
