@@ -1,12 +1,14 @@
 
 from gensim.models.phrases import Phrases, ENGLISH_CONNECTOR_WORDS
 from gensim.parsing.preprocessing import STOPWORDS
+import numpy as np
 import pandas as pd
 
 import random
 import re
 from collections import defaultdict
 
+import app_config
 import parse_csv
 
 def get_config(mock_mode):
@@ -48,6 +50,29 @@ def dumb_segmenter_model():
         (object,),
         {"sents": [type("obj", (object,), {"text": y}) for y in x.split(".")]},
     )
+
+
+def get_highest_mi_words(df):
+    # Calculate the total number of word occurrences across all clusters
+    df = df.copy()
+    df.set_index(df.columns[0], inplace=True)
+    total_word_occurrences = df.sum().sum()
+
+    # Calculate the probability of each word and each cluster
+    word_prob = df.sum(axis=1) / total_word_occurrences
+    doc_prob = df.sum(axis=0) / total_word_occurrences
+
+    # Calculate PMI for each word-cluster pair
+    pmi_df = pd.DataFrame()
+    for doc in df.columns:
+        pmi_df[doc] = df[doc] / total_word_occurrences / (word_prob * doc_prob[doc])
+        pmi_df[doc] = pmi_df[doc].apply(lambda x: 0 if x == 0 else np.log2(x))
+
+    # Find the top three words with the highest PMI for each cluster
+    top_words = {}
+    for doc in pmi_df.columns:
+        top_words[doc] = pmi_df[doc].nlargest(3).index.tolist()
+    return top_words
 
 
 def get_top_phrases(data, grouping_key):
@@ -98,4 +123,4 @@ def get_top_phrases(data, grouping_key):
             )  # Show C(word, category)
     #   **{k:round(100.0*c[k]/(count_sums[k]+1), 2) for k in all_category_values}})     # Show P(word|category)
     table.sort(key=lambda x: x["Total"], reverse=True)
-    return pd.DataFrame(table)
+    return pd.DataFrame(table[:app_config.MAX_WORDS_AND_PHRASES])

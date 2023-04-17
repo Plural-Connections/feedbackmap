@@ -36,7 +36,7 @@ _TABLEAU20_SCHEME = [
 ]
 
 
-def make_scatterplot(data, color_key, categories_to_show):
+def make_scatterplot(data, color_key, categories_to_show, cluster_to_top_terms):
     altair.renderers.enable("html")
     value_counts = defaultdict(lambda: 0)
     items = []
@@ -72,6 +72,10 @@ def make_scatterplot(data, color_key, categories_to_show):
             item["ColorGroup"],
             100.0 * value_counts[item["ColorGroup"]] / len(data),
         )
+        if item["ColorGroup"] in cluster_to_top_terms:
+            terms_list = ", ".join(cluster_to_top_terms[item["ColorGroup"]])
+            legend_value = "%s [%s]" % (legend_value, terms_list)
+
         legend_values[legend_value] = value_counts[item["ColorGroup"]]
         item["GroupForLegend"] = legend_value
     df = pd.DataFrame(items)

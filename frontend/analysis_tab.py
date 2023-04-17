@@ -10,12 +10,13 @@ import charts
 import local_models
 import util
 import logger
+import re
 
 _RESPONSE_RATE_TEXT = "Response rate for that question"
 
 
 @st.cache_data(persist=True)
-def embed_responses(df, q, split_sentences=True):
+def embed_responses(df, q, split_sentences=True, ignore_names=False):
     # Split raw responses into sentences and embed
     parent_records = []
     all_sentences = []
@@ -26,6 +27,9 @@ def embed_responses(df, q, split_sentences=True):
             sentences = [sent.text.strip() for sent in doc.sents]
         else:
             sentences = [row[q].strip()]
+        if ignore_names:
+            sentences = [re.sub(r"\b[A-Z]+\b", "", s) for s in sentences]
+
         for cleaned_sent in sentences:
             if cleaned_sent:
                 parent_records.append(dict(row))
@@ -64,7 +68,8 @@ def cluster_data(full_embs, min_cluster_size):
         if label == "-1":  # unknown cluster
             final_labels.append(app_config.UNCLUSTERED_NAME)
         else:
-            final_labels.append("Cluster %d" % (sorted_labels.index(label) + 1))
+            cluster_name = "Cluster %d" % (sorted_labels.index(label) + 1)
+            final_labels.append(cluster_name)
     return final_labels
 
 
@@ -143,7 +148,7 @@ def value_summary_table(
     st.table(table_df)
 
 
-def top_words_table(data, grouping_key, categories):
+def top_words_table(phrase_df, grouping_key, categories):
     st.write(
         "The table below shows the key words and phrases found in the texts. "
         + 'The "Total" column shows the number of occurrences in all texts, and the other columns '
@@ -152,7 +157,6 @@ def top_words_table(data, grouping_key, categories):
         + "clusters for each term are highlighted in green.  Click on a column header twice to sort "
         + "the column by count, and thereby see the most popular key terms in the cluster."
     )
-    phrase_df = local_models.get_top_phrases(data, grouping_key)
     cols = list(phrase_df.columns.values)[2:]  # Term, total...
     if grouping_key == app_config.CLUSTER_OPTION_TEXT:
         # Sort numerically, with Unclustered at the end
@@ -167,6 +171,7 @@ def top_words_table(data, grouping_key, categories):
     phrase_df = phrase_df[["Term", "Total"] + cols]
     # TODO:  Color the header columns according to the chart.   Hide index.
 
+    # See:  https://issues.streamlit.app/?issue=gh-5953
     st.dataframe(
         phrase_df.style.highlight_max(
             color="lightgreen",
@@ -241,9 +246,16 @@ def run(columns_to_analyze, df, categories):
         if grouping_key == app_config.CLUSTER_OPTION_TEXT:
             st_cluster_size = st.empty()
         split_sentences = st.checkbox(
-            "Treat each sentence separately?",
+            "Treat each sentence separately",
             value=False,
             help="If this is selected, one dot will be plotted below for each *sentence* in each response.  If it's not selected, one dot will be plotted per response.",
+            on_change=logger.log,
+            kwargs=dict(action="TREAT_SENTENCES_SEPARATELY"),
+        )
+        ignore_names = st.checkbox(
+            "Ignore names for scatterplot",
+            value=False,
+            help="If this is selected, the scatterplot will ignore the capitalized words in the responses, so that the positioning is not influenced by the names mentioned.",
             on_change=logger.log,
             kwargs=dict(action="TREAT_SENTENCES_SEPARATELY"),
         )
@@ -279,7 +291,7 @@ def run(columns_to_analyze, df, categories):
             data = []
             for q in columns_to_analyze:
                 sents, embs, parent_records, full_embs = embed_responses(
-                    df, q, split_sentences
+                    df, q, split_sentences, ignore_names
                 )
                 data.extend(
                     [
@@ -308,9 +320,13 @@ def run(columns_to_analyze, df, categories):
                 df = pd.DataFrame([x["rec"] for x in data])
                 category_values = list(cluster_label_counts.keys())
                 categories[app_config.CLUSTER_OPTION_TEXT] = dict(cluster_label_counts)
+
+            phrase_df = local_models.get_top_phrases(data, grouping_key)
+            cluster_to_top_terms = local_models.get_highest_mi_words(phrase_df)
+
             with scatterplot_placeholder:
                 scatterplot, color_scheme = charts.make_scatterplot(
-                    data, grouping_key, categories.keys()
+                    data, grouping_key, categories.keys(), cluster_to_top_terms
                 )
                 st.altair_chart(scatterplot)
             survey_teaser()
@@ -340,5 +356,5 @@ def run(columns_to_analyze, df, categories):
 
     # Top words and phrases
     with top_words_expander:
-        top_words_table(data, grouping_key, categories)
+        top_words_table(phrase_df, grouping_key, categories)
         survey_teaser()
