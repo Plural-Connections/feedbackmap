@@ -25,7 +25,7 @@ MAX_WORDS_AND_PHRASES = 200
 
 # Number of additional categories (other than the one of interest) to show on
 # tooltips in the topic scatterplot on the analysis tab
-MAX_CATEGORIES_ON_TOOLTIP = 3
+MAX_CATEGORIES_ON_TOOLTIP = 5
 
 # Set to false if you don't have an OpenAI API key.  This will cause
 # placeholders to be printed for the summarization features.

@@ -159,7 +159,7 @@ def run_completion_query(prompt, model="text-davinci-003", num_to_generate=1):
                     model=model,
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.0,
-                    max_tokens=300,
+                    max_tokens=500,
                 )
                 # Hack: Move the response text to the old API's expected location
                 response["choices"][0]["text"] = response["choices"][0]["message"]["content"]

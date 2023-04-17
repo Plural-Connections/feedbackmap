@@ -27,14 +27,17 @@ def embed_responses(df, q, split_sentences=True, ignore_names=False):
             sentences = [sent.text.strip() for sent in doc.sents]
         else:
             sentences = [row[q].strip()]
-        if ignore_names:
-            sentences = [re.sub(r"\b[A-Z]+\b", "", s) for s in sentences]
 
         for cleaned_sent in sentences:
             if cleaned_sent:
                 parent_records.append(dict(row))
                 all_sentences.append(cleaned_sent)
-    all_embeddings = app_config.CONFIG["model"].encode(all_sentences)
+
+    if ignore_names:
+        sentences_to_encode = [re.sub(r"\b[A-Z][a-z]+\b", "", s) for s in all_sentences]
+    else:
+        sentences_to_encode = all_sentences
+    all_embeddings = app_config.CONFIG["model"].encode(sentences_to_encode)
     # UMAP everything
     all_umap_emb = um.UMAP(n_components=2, metric="euclidean").fit_transform(
         all_embeddings
