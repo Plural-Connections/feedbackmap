@@ -8,7 +8,6 @@ TITLE = "Feedback Map"
 ICON = ":pencil:"
 
 CATEGORICAL_QUESTIONS_BGCOLOR = "lightyellow"
-MAX_VALUES_TO_SUMMARIZE = 20
 SURVEY_URL = "https://forms.gle/36usGykgjnR1HKma7"
 SURVEY_CSS = "<style> .big-font { font-size:30px !important ; padding: 5px; background-color: lightgreen; } </style>"
 
@@ -17,9 +16,16 @@ MOCK_MODE = False
 
 UNCLUSTERED_NAME = "Unclustered"
 
+# Number of category values to generate per-value LLM-based summaries for
+# in the "Categorical breakdown" section
+MAX_VALUES_TO_SUMMARIZE = 20
+
+# Number of words and phrases to show in the "Top words and phrases" table
+MAX_WORDS_AND_PHRASES = 200
+
 # Number of additional categories (other than the one of interest) to show on
 # tooltips in the topic scatterplot on the analysis tab
-MAX_CATEGORIES_ON_TOOLTIP = 3
+MAX_CATEGORIES_ON_TOOLTIP = 5
 
 # Set to false if you don't have an OpenAI API key.  This will cause
 # placeholders to be printed for the summarization features.
@@ -34,7 +40,7 @@ PROMPTS = {
         "model": "gpt-3.5-turbo-0301",
     },
     "Three words": {
-        "prompt": "Summarize these responses in three words.",
+        "prompt": "Summarize all of these responses in three words.",
         "model": "gpt-3.5-turbo-0301",
     },
     UNUSUAL_PROMPT: {

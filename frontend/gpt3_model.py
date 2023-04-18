@@ -71,6 +71,7 @@ class LiveGptModel(OfflineModel):
             preamble = 'Here are some responses to the question "%s":\n' % (column)
         instructions = app_config.PROMPTS[prompt]["prompt"]
         nonempty_responses = self.prompt_examples(df, column, facet_column, facet_val)
+
         # See https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them
         max_words = (
             app_config.MAX_TOKENS[model] / 1.5 - len(preamble) - len(instructions) - 500
@@ -83,7 +84,11 @@ class LiveGptModel(OfflineModel):
             examples = nonempty_responses.sample(
                 min(max_sample_size, len(nonempty_responses)), random_state=42
             )
-            max_sample_size -= 10
+            # Keep reducing number of examples until it fits in max_words
+            if max_sample_size > 10:
+                max_sample_size -= 10
+            else:
+                max_sample_size -= 1
 
         if len(examples) <= 1:
             answer = self.canned_answer(examples)
@@ -154,7 +159,7 @@ def run_completion_query(prompt, model="text-davinci-003", num_to_generate=1):
                     model=model,
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.0,
-                    max_tokens=300,
+                    max_tokens=500,
                 )
                 # Hack: Move the response text to the old API's expected location
                 response["choices"][0]["text"] = response["choices"][0]["message"]["content"]
