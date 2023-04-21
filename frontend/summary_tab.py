@@ -21,6 +21,7 @@ def run(df, text_response_columns, categories):
     )
     # st.subheader("Text response questions:")
     buttons = {}
+    val_restricts = {}
     for k, v in text_response_columns.items():
         btn_col, info_col = st.columns(2)
         with btn_col:
@@ -37,7 +38,7 @@ def run(df, text_response_columns, categories):
             )
     st.markdown("#### Here are the categorical questions from your survey:")
     for k, v in categories.items():
-        q_col, info_col = st.columns(2)
+        q_col, info_col, restrict_col = st.columns(3)
         with q_col:
             st.markdown(
                 '<p style="background-color:%s; border-radius: 5px; padding:10px">%s</p>'
@@ -49,8 +50,21 @@ def run(df, text_response_columns, categories):
                 "%d different values seen\\\n%0.2f selections per response"
                 % (len(v), sum(v.values()) / len(df))
             )
+        if len(v) > 1:
+            sorted_vals = list(v.keys())
+            sorted_vals.sort(key = lambda x: v[x], reverse=True)
+            with restrict_col:
+                val_restricts[k] = st.selectbox(
+                    "Restrict analysis", [app_config.NO_RESTRICT_TITLE] + sorted_vals,
+                    format_func=lambda x: (
+                        (x == app_config.NO_RESTRICT_TITLE)
+                        and x
+                        or ("Restrict to: %s (%d responses)" % (str(x), v[x]))
+                    ),
+                    label_visibility="collapsed")
 
     for k, b in buttons.items():
         if b:
             st.session_state["analyze"] = [k]
+            st.session_state["val_restricts"] = val_restricts
             st.experimental_rerun()

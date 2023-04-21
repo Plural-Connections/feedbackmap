@@ -85,7 +85,7 @@ def get_top_phrases(data, grouping_key):
         min_count=2,
         threshold=0.1,
         connector_words=frozenset(
-            list(ENGLISH_CONNECTOR_WORDS) + ["is", "are", "was", "I", "we", "it", "a"]
+            list(ENGLISH_CONNECTOR_WORDS) + ["is", "are", "was", "I", "we", "it", "a", "000"]
         ),
     )
     res = []

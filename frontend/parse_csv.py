@@ -55,12 +55,12 @@ def infer_column_types(df):
     for column in df.columns:
         if column not in _SKIP_COLUMNS:
             val_dict = val_dictionary_for_column(df, column)
+            mean_num_spaces = sum([len(v.split()) for v in val_dict.keys()]) / len(val_dict)
             # If the fraction of nonempty responses that are unique values is more than
             # _MAX_FRACTION_FOR_CATEGORICAL, consider it to be a text response field,
             # otherwise consider it to be a categorical attribute
-            if len(val_dict) < _MAX_FRACTION_FOR_CATEGORICAL * len(
-                df[df[column] != ""]
-            ):
+            if (len(val_dict) < _MAX_FRACTION_FOR_CATEGORICAL * len(
+                    df[df[column] != ""]) or mean_num_spaces <= 1.1):
                 categories[column] = val_dict
             else:
                 text_responses[column] = val_dict

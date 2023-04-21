@@ -38,6 +38,11 @@ def embed_responses(df, q, split_sentences=True, ignore_names=False):
     else:
         sentences_to_encode = all_sentences
     all_embeddings = app_config.CONFIG["model"].encode(sentences_to_encode)
+
+    if len(all_embeddings) == 0:
+        st.warning("No responses found for *%s*." % (q))
+        st.stop()
+
     # UMAP everything
     all_umap_emb = um.UMAP(n_components=2, metric="euclidean").fit_transform(
         all_embeddings
@@ -133,7 +138,7 @@ def value_summary_table(
             {
                 "Categorical response": category_values[i],
                 "Number of respondees": num_responses,
-                'Auto-generated summary for their answers to "%s"'
+                'Auto-generated summary for answers to "%s"'
                 % (columns_to_analyze[0]): res["answer"],
                 _RESPONSE_RATE_TEXT: nonempty_rate,
             }
@@ -230,6 +235,17 @@ def get_grouping_key_of_interest(categories):
 def run(columns_to_analyze, df, categories):
     util.hide_table_row_index()
     st.subheader(", ".join(columns_to_analyze))
+
+    if (
+        "val_restricts" in st.session_state
+        and len(set(st.session_state["val_restricts"].values())) > 1
+    ):
+        # We're restricting this to certain category values.  Say so, and update df
+        for k, v in st.session_state["val_restricts"].items():
+            if v != app_config.NO_RESTRICT_TITLE:
+                st.info("Restricting to %s = %s" % (k, v))
+                df = df[df[k] == v]
+
     if len(df) > app_config.MAX_ROWS_FOR_ANALYSIS:
         st.warning(
             "We have sampled %d random rows from the data for the following analysis"
@@ -321,6 +337,7 @@ def run(columns_to_analyze, df, categories):
                 # Rewrite df to be based on the scatterplot data
                 # (which might have been split by sentence.)
                 df = pd.DataFrame([x["rec"] for x in data])
+                # TODO:  Is this working correctly when split-by-sentences in on?
                 category_values = list(cluster_label_counts.keys())
                 categories[app_config.CLUSTER_OPTION_TEXT] = dict(cluster_label_counts)
 
