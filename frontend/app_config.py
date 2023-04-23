@@ -67,3 +67,6 @@ MAX_ROWS_FOR_ANALYSIS = 5000
 
 # If the user uploads a plaintext (non-CSV) file, give the column this generic name.
 COLUMN_NAME_FOR_TEXT_FILES = "Text"
+
+# In the per-category restrict selectbox, this string means no restrict
+NO_RESTRICT_TITLE = "Allow all values"
