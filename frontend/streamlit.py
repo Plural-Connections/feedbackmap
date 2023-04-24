@@ -72,8 +72,8 @@ def streamlit_app():
         else:
             with st.spinner():
                 categories, text_response_columns = parse_csv.infer_column_types(df)
-                st.session_state["categories"] = categories
-                st.session_state["text_response_columns"] = text_response_columns
+                st.session_state["categories"] = categories.copy()
+                st.session_state["text_response_columns"] = text_response_columns.copy()
         with summary_tab_st:
             summary_tab.run(df, text_response_columns, categories)
 

@@ -35,7 +35,7 @@ class OfflineModel:
                 len(examples)
             )
 
-    def get_summary(self, df, column, facet_column=None, facet_val=None, prompt=None):
+    def get_summary(self, df, column, facet_column=None, facet_val=None, prompt=None, temperature=0.0):
         examples = self.prompt_examples(df, column, facet_column, facet_val)
         return {
             "instructions": "No GPT-3 model available",
@@ -47,7 +47,7 @@ class OfflineModel:
         }
 
     def get_summaries(
-        self, df, question_column, facet_column, facet_values, prompt=None
+        self, df, question_column, facet_column, facet_values, prompt=None, temperature=0.0
     ):
         return [
             self.get_summary(df, question_column, facet_column, x) for x in facet_values
@@ -62,13 +62,14 @@ class LiveGptModel(OfflineModel):
         facet_column=None,
         facet_val=None,
         prompt=app_config.DEFAULT_PROMPT,
+        temperature=0.0,
     ):
         model = app_config.PROMPTS[prompt]["model"]
         if column == app_config.COLUMN_NAME_FOR_TEXT_FILES:
             # For single-column text files, do not label the examples
             preamble = ""
         else:
-            preamble = 'Here are some responses to the question "%s":\n' % (column)
+            preamble = 'Here are some responses to "%s":\n' % (column)
         instructions = app_config.PROMPTS[prompt]["prompt"]
         nonempty_responses = self.prompt_examples(df, column, facet_column, facet_val)
 
@@ -82,7 +83,8 @@ class LiveGptModel(OfflineModel):
         max_sample_size = _MAX_SAMPLE_SIZE
         while examples is None or len("\n".join(examples).split()) > max_words:
             examples = nonempty_responses.sample(
-                min(max_sample_size, len(nonempty_responses)), random_state=42
+                min(max_sample_size, len(nonempty_responses)),
+                random_state=(int(temperature*1000))
             )
             # Keep reducing number of examples until it fits in max_words
             if max_sample_size > 10:
@@ -100,7 +102,7 @@ class LiveGptModel(OfflineModel):
                 + instructions
                 + "\n"
             )
-            response = run_completion_query(prompt_str, model=model)
+            response = run_completion_query(prompt_str, model=model, temperature=temperature)
             answer = set([c["text"] for c in response["choices"]])
             answer = "\n".join(list(answer))
         return {
@@ -119,6 +121,7 @@ class LiveGptModel(OfflineModel):
         facet_column,
         facet_values,
         prompt=app_config.DEFAULT_PROMPT,
+        temperature=0.0,
     ):
         """Get a summary for each value of a facet."""
         if True:
@@ -149,7 +152,7 @@ def get_config():
 
 
 @st.cache_data(persist=True)
-def run_completion_query(prompt, model="text-davinci-003", num_to_generate=1):
+def run_completion_query(prompt, model="text-davinci-003", num_to_generate=1, temperature=0.0):
     tries = 0
     while tries < 3:
         try:
@@ -158,7 +161,7 @@ def run_completion_query(prompt, model="text-davinci-003", num_to_generate=1):
                 response = openai.ChatCompletion.create(
                     model=model,
                     messages=[{"role": "user", "content": prompt}],
-                    temperature=0.0,
+                    temperature=temperature,
                     max_tokens=500,
                 )
                 # Hack: Move the response text to the old API's expected location
@@ -167,7 +170,7 @@ def run_completion_query(prompt, model="text-davinci-003", num_to_generate=1):
                 response = openai.Completion.create(
                     model=model,
                     prompt=prompt,
-                    temperature=0.0,
+                    temperature=temperature,
                     n=num_to_generate,
                     stop=["\n\n"],
                     max_tokens=300,

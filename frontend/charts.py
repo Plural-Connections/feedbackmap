@@ -40,7 +40,7 @@ def make_scatterplot(data, color_key, categories_to_show, cluster_to_top_terms):
     altair.renderers.enable("html")
     value_counts = defaultdict(lambda: 0)
     items = []
-    categories_to_show = [c for c in categories_to_show if c != color_key][
+    categories_to_show = [c for c in categories_to_show if c != color_key and c != app_config.CLUSTER_OPTION_TEXT][
         : app_config.MAX_CATEGORIES_ON_TOOLTIP
     ]
     for x in data:
