@@ -10,6 +10,7 @@ import charts
 import local_models
 import util
 import logger
+import random
 import re
 
 _RESPONSE_RATE_TEXT = "Response rate for that question"
@@ -358,9 +359,14 @@ def run(columns_to_analyze, df, categories):
     with interesting_examples_summary_expander:
         with st.spinner():
             res = app_config.CONFIG["llm"].get_summary(
-                df, columns_to_analyze[0], prompt=app_config.UNUSUAL_PROMPT
+                df, columns_to_analyze[0], prompt=app_config.UNUSUAL_PROMPT,
+                temperature = (("regenerate" in st.session_state) and random.random()) or 0.0
             )
             st.write("%s" % (res["answer"]))
+            generate_again = st.button("Pick again")
+            if generate_again:
+                st.session_state["regenerate"] = 1
+                st.experimental_rerun()
 
     # Per-value summary table
     with value_table_expander:
