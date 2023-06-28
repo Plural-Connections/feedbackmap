@@ -1,7 +1,6 @@
 #!/user/bin/env python3
 
 import openai
-import streamlit as st
 
 import re
 import time
@@ -151,7 +150,6 @@ def get_config():
     return {"llm": app_config.USE_GPT3 and LiveGptModel() or OfflineModel()}
 
 
-@st.cache_data(persist=True)
 def run_completion_query(prompt, model="text-davinci-003", num_to_generate=1, temperature=0.0):
     tries = 0
     while tries < 3:
@@ -177,6 +175,6 @@ def run_completion_query(prompt, model="text-davinci-003", num_to_generate=1, te
                 )
             return response
         except (openai.error.RateLimitError, openai.error.APIError) as e:
-            st.write(e)
+            print(e)
             tries += 1
             time.sleep(10)
