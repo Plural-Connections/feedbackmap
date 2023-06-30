@@ -304,7 +304,7 @@ def run(columns_to_analyze, df, categories):
             if grouping_key == app_config.CLUSTER_OPTION_TEXT:
                 with st_cluster_size:
                     cluster_size = get_cluster_size(full_embs)
-                cluster_result = cluster_data(full_embs, cluster_size)
+                cluster_result = cluster_data(full_embs, cluster_size)["labels"]
                 cluster_label_counts = defaultdict(lambda: 0)
                 for i, x in enumerate(data):
                     cluster_label_counts[cluster_result[i]] += 1

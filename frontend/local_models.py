@@ -25,7 +25,7 @@ class SentenceTransformersModel:
     def __init__(self):
         from sentence_transformers import SentenceTransformer
 
-        self.m = SentenceTransformer("all-MiniLM-L6-v2")
+        self.m = SentenceTransformer(app_config.EMBEDDING_MODEL)
 
     def encode(self, x):
         return self.m.encode(x)
@@ -128,7 +128,7 @@ def get_top_phrases(data, grouping_key):
     return pd.DataFrame(table[:app_config.MAX_WORDS_AND_PHRASES])
 
 
-def embed_responses(df, q, split_sentences=True, ignore_names=False):
+def embed_responses(df, q, split_sentences=True, ignore_names=False, compute_2d_points=True):
     # Split raw responses into sentences and embed
     parent_records = []
     all_sentences = []
@@ -156,9 +156,12 @@ def embed_responses(df, q, split_sentences=True, ignore_names=False):
         st.stop()
 
     # UMAP everything
-    all_umap_emb = um.UMAP(n_components=2, metric="euclidean").fit_transform(
-        all_embeddings
-    )
+    if compute_2d_points:
+        all_umap_emb = um.UMAP(n_components=2, metric="euclidean").fit_transform(
+            all_embeddings
+        )
+    else:
+        all_umap_emb = None
 
     return all_sentences, all_umap_emb, parent_records, all_embeddings
 
@@ -189,4 +192,4 @@ def cluster_data(full_embs, min_cluster_size):
         else:
             cluster_name = "Cluster %d" % (sorted_labels.index(label) + 1)
             final_labels.append(cluster_name)
-    return final_labels
+    return {"labels": final_labels, "clusterer": clusterer}
