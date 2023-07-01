@@ -20,8 +20,8 @@ def embed_responses(df, q, split_sentences=True, ignore_names=False):
 
 
 @st.cache_data(persist=True)
-def cluster_data(full_embs, min_cluster_size):
-    return local_models.cluster_data(full_embs, min_cluster_size)
+def cluster_labels(full_embs, min_cluster_size):
+    return local_models.cluster_data(full_embs, min_cluster_size)["labels"]
 
 
 @st.cache_data
@@ -304,7 +304,7 @@ def run(columns_to_analyze, df, categories):
             if grouping_key == app_config.CLUSTER_OPTION_TEXT:
                 with st_cluster_size:
                     cluster_size = get_cluster_size(full_embs)
-                cluster_result = cluster_data(full_embs, cluster_size)["labels"]
+                cluster_result = cluster_labels(full_embs, cluster_size)
                 cluster_label_counts = defaultdict(lambda: 0)
                 for i, x in enumerate(data):
                     cluster_label_counts[cluster_result[i]] += 1
