@@ -24,7 +24,7 @@ def get_config(mock_mode):
 class SentenceTransformersModel:
     def __init__(self):
         from sentence_transformers import SentenceTransformer
-
+        print("Model", app_config.EMBEDDING_MODEL)
         self.m = SentenceTransformer(app_config.EMBEDDING_MODEL)
 
     def encode(self, x):
@@ -193,4 +193,5 @@ def cluster_data(full_embs, min_cluster_size):
         else:
             cluster_name = "Cluster %d" % (sorted_labels.index(label) + 1)
             final_labels.append(cluster_name)
-    return {"labels": final_labels, "clusterer": clusterer, "mid_umap": mid_umap}
+    return {"labels": final_labels, "clusterer": clusterer, "mid_umap": mid_umap,
+            "raw_labels": list([str(label) for label in clusterer.labels_])}

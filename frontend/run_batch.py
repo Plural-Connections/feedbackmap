@@ -23,11 +23,11 @@ IGNORE_NAMES = True
 
 
 def set_app_config():
+    # Bigger and better embedding model than the webapp
+    app_config.EMBEDDING_MODEL = "all-mpnet-base-v2"
     app_config.CONFIG = local_models.get_config(False)
     # Use same gpt3 config as the webapp
     app_config.CONFIG.update(gpt3_model.get_config())
-    # Bigger and better embedding model than the webapp
-    app_config.EMBEDDING_MODEL = "all-mpnet-base-v2"
     # Tweak the prompt for this dataset
     app_config.PROMPTS[app_config.DEFAULT_PROMPT][
         "prompt"
@@ -66,7 +66,7 @@ if __name__ == "__main__":
     #    cluster_labels = local_models.cluster_data(full_embs, 12)   # for 10k
     cluster_result = local_models.cluster_data(full_embs, 50)
 
-    cluster_labels = cluster_result["labels"]
+    cluster_labels = cluster_result["raw_labels"]
     clusterer = cluster_result["clusterer"]
 
     # Save UMAP model from clusterer
