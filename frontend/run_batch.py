@@ -9,14 +9,16 @@ Set the filename, column to ananlyze, and maximum number of rows to use, below.
 
 import json
 import pickle
+import sys
 
 import app_config
 import local_models
 import gpt3_model
+import numpy as np
 import pandas as pd
 
 INPUT_FILE = "localview_sentences"
-NUM_TRAINING_INSTANCES = 100000
+NUM_TRAINING_INSTANCES = 200000
 TARGET_TEXT_COLUMN = "target_text"
 SPLIT_SENTENCES = False
 IGNORE_NAMES = True
@@ -24,7 +26,7 @@ IGNORE_NAMES = True
 
 def set_app_config():
     # Bigger and better embedding model than the webapp
-    app_config.EMBEDDING_MODEL = "all-mpnet-base-v2"
+#    app_config.EMBEDDING_MODEL = "all-mpnet-base-v2"
     app_config.CONFIG = local_models.get_config(False)
     # Use same gpt3 config as the webapp
     app_config.CONFIG.update(gpt3_model.get_config())
@@ -33,7 +35,7 @@ def set_app_config():
         "prompt"
     ] = "The above comments are from different city and school board meetings.  In no more than three words, what topics do these remarks have in common?"
     # Use gpt-4 for titling the clusters
-    app_config.PROMPTS[app_config.DEFAULT_PROMPT]["model"] = "gpt-4"
+#    app_config.PROMPTS[app_config.DEFAULT_PROMPT]["model"] = "gpt-4"
 
 
 def embed_sentences(df):
@@ -62,9 +64,14 @@ if __name__ == "__main__":
 
     # Get cluster IDs for each point
     print("Clustering...")
-    full_embs = embed_sentences(df)
-    #    cluster_labels = local_models.cluster_data(full_embs, 12)   # for 10k
-    cluster_result = local_models.cluster_data(full_embs, 50)
+
+    if True:
+        full_embs = embed_sentences(df)
+        np.save("full_embs.npy", full_embs)
+    else:
+        full_embs = np.load("full_embs.npy")
+
+    cluster_result = local_models.cluster_data(full_embs, 100)
 
     cluster_labels = cluster_result["raw_labels"]
     clusterer = cluster_result["clusterer"]
@@ -80,8 +87,6 @@ if __name__ == "__main__":
 
     df["cluster_id"] = cluster_labels
     df.to_csv(INPUT_FILE + "_clustered.csv")
-
-    sys.exit(0)
 
     # Get LLM-based cluster summaries
     print("Getting summaries...")

@@ -6,12 +6,16 @@ import numpy as np
 import pandas as pd
 from umap import umap_ as um
 
+import os
 import random
 import re
 from collections import defaultdict
 
 import app_config
 import parse_csv
+
+# Per https://github.com/huggingface/transformers/issues/5486
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 def get_config(mock_mode):
     """If mock_mode is set, don't load any NLP libraries."""
@@ -24,7 +28,6 @@ def get_config(mock_mode):
 class SentenceTransformersModel:
     def __init__(self):
         from sentence_transformers import SentenceTransformer
-        print("Model", app_config.EMBEDDING_MODEL)
         self.m = SentenceTransformer(app_config.EMBEDDING_MODEL)
 
     def encode(self, x):
@@ -169,11 +172,14 @@ def embed_responses(df, q, split_sentences=True, ignore_names=False, compute_2d_
 def cluster_data(full_embs, min_cluster_size):
     mid_umap = um.UMAP(
         # Note: UMAP seems to require that k <= N-2
-        n_components=min(50, len(full_embs) - 2),
-        metric="euclidean",
+        n_components=min(6, len(full_embs) - 2),
+        metric="cosine",
     ).fit(full_embs)
+#    ).fit(full_embs[random_indices, :])
     mid_umap_embs = mid_umap.transform(full_embs)
     clusterer = hdbscan.HDBSCAN(
+#        min_samples=2,
+        prediction_data=True,
         min_cluster_size=min(min_cluster_size, len(full_embs) - 1)
     )
     clusterer.fit(mid_umap_embs)
