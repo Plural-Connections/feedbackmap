@@ -1,9 +1,7 @@
 from collections import defaultdict
 
-import hdbscan
 import pandas as pd
 import streamlit as st
-from umap import umap_ as um
 
 import app_config
 import charts
@@ -18,68 +16,45 @@ _RESPONSE_RATE_TEXT = "Response rate for that question"
 
 @st.cache_data(persist=True)
 def embed_responses(df, q, split_sentences=True, ignore_names=False):
-    # Split raw responses into sentences and embed
-    parent_records = []
-    all_sentences = []
-    all_embeddings = []
-    for _, row in df.iterrows():
-        if split_sentences:
-            doc = app_config.CONFIG["nlp"](row[q])
-            sentences = [sent.text.strip() for sent in doc.sents]
-        else:
-            sentences = [row[q].strip()]
-
-        for cleaned_sent in sentences:
-            if cleaned_sent:
-                parent_records.append(dict(row))
-                all_sentences.append(cleaned_sent)
-
-    if ignore_names:
-        sentences_to_encode = [re.sub(r"\b[A-Z][a-z]+\b", "", s) for s in all_sentences]
-    else:
-        sentences_to_encode = all_sentences
-    all_embeddings = app_config.CONFIG["model"].encode(sentences_to_encode)
-
-    if len(all_embeddings) == 0:
-        st.warning("No responses found for *%s*." % (q))
-        st.stop()
-
-    # UMAP everything
-    all_umap_emb = um.UMAP(n_components=2, metric="euclidean").fit_transform(
-        all_embeddings
-    )
-
-    return all_sentences, all_umap_emb, parent_records, all_embeddings
+    return local_models.embed_responses(df, q, split_sentences, ignore_names)
 
 
 @st.cache_data(persist=True)
-def cluster_data(full_embs, min_cluster_size):
-    mid_umap_embs = um.UMAP(
-        # Note: UMAP seems to require that k <= N-2
-        n_components=min(50, len(full_embs) - 2),
-        metric="euclidean",
-    ).fit_transform(full_embs)
-    clusterer = hdbscan.HDBSCAN(
-        min_cluster_size=min(min_cluster_size, len(full_embs) - 1)
+def cluster_labels(full_embs, min_cluster_size):
+    return local_models.cluster_data(full_embs, min_cluster_size)["labels"]
+
+
+@st.cache_data
+def get_llm_summary(
+    df,
+    column,
+    facet_column=None,
+    facet_val=None,
+    prompt=app_config.DEFAULT_PROMPT,
+    temperature=0.0,
+):
+    return app_config.CONFIG["llm"].get_summary(
+        df,
+        column,
+        facet_column=facet_column,
+        facet_val=facet_val,
+        prompt=prompt,
+        temperature=temperature,
     )
-    clusterer.fit(mid_umap_embs)
 
-    # Renumber clusters, most common to least common (with -1 last)
-    counts = defaultdict(lambda: 0)
-    for c in clusterer.labels_:
-        counts[str(c)] += 1
-    sorted_labels = list(counts.keys())
 
-    sorted_labels.sort(key=lambda x: ((x == "-1" and -1) or counts[x]), reverse=True)
-    final_labels = []
-    for label in clusterer.labels_:
-        label = str(label)
-        if label == "-1":  # unknown cluster
-            final_labels.append(app_config.UNCLUSTERED_NAME)
-        else:
-            cluster_name = "Cluster %d" % (sorted_labels.index(label) + 1)
-            final_labels.append(cluster_name)
-    return final_labels
+@st.cache_data
+def get_llm_summaries(
+    df, question_column, facet_column, facet_values, prompt=None, temperature=0.0
+):
+    return app_config.CONFIG["llm"].get_summaries(
+        df,
+        question_column,
+        facet_column,
+        facet_values,
+        prompt=prompt,
+        temperature=temperature,
+    )
 
 
 def survey_teaser():
@@ -107,7 +82,7 @@ def value_summary_table(
 
     table = []
     cluster_prompt = get_cluster_prompt()
-    summaries = app_config.CONFIG["llm"].get_summaries(
+    summaries = get_llm_summaries(
         df,
         columns_to_analyze[0],
         grouping_key,
@@ -298,7 +273,7 @@ def run(columns_to_analyze, df, categories):
     # Overall summary
     with overall_summary_expander:
         with st.spinner():
-            res = app_config.CONFIG["llm"].get_summary(df, columns_to_analyze[0])
+            res = get_llm_summary(df, columns_to_analyze[0])
             st.write("%s" % (res["answer"]))
 
     # Compute embeddings and plot scatterplot
@@ -329,7 +304,7 @@ def run(columns_to_analyze, df, categories):
             if grouping_key == app_config.CLUSTER_OPTION_TEXT:
                 with st_cluster_size:
                     cluster_size = get_cluster_size(full_embs)
-                cluster_result = cluster_data(full_embs, cluster_size)
+                cluster_result = cluster_labels(full_embs, cluster_size)
                 cluster_label_counts = defaultdict(lambda: 0)
                 for i, x in enumerate(data):
                     cluster_label_counts[cluster_result[i]] += 1
@@ -350,7 +325,6 @@ def run(columns_to_analyze, df, categories):
                     data, grouping_key, categories.keys(), cluster_to_top_terms
                 )
                 st.altair_chart(scatterplot)
-            survey_teaser()
 
         # Sort category values by popularity
         category_values.sort(key=lambda x: categories[grouping_key][x], reverse=True)
@@ -358,9 +332,12 @@ def run(columns_to_analyze, df, categories):
     # "Interesting responses" summary
     with interesting_examples_summary_expander:
         with st.spinner():
-            res = app_config.CONFIG["llm"].get_summary(
-                df, columns_to_analyze[0], prompt=app_config.UNUSUAL_PROMPT,
-                temperature = (("regenerate" in st.session_state) and random.random()) or 0.0
+            res = get_llm_summary(
+                df,
+                columns_to_analyze[0],
+                prompt=app_config.UNUSUAL_PROMPT,
+                temperature=(("regenerate" in st.session_state) and random.random())
+                or 0.0,
             )
             st.write("%s" % (res["answer"]))
             generate_again = st.button("Pick again")

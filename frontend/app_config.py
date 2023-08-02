@@ -31,6 +31,10 @@ MAX_CATEGORIES_ON_TOOLTIP = 5
 # placeholders to be printed for the summarization features.
 USE_GPT3 = True
 
+# Model to use for computing sentence embeddings
+# See https://sbert.net/docs/pretrained_models.html
+EMBEDDING_MODEL = "all-MiniLM-L6-v2"
+
 DEFAULT_PROMPT = "Paragraph summary"
 UNUSUAL_PROMPT = "Most unusual responses"
 
@@ -59,7 +63,7 @@ PROMPTS = {
 
 
 # See https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them
-MAX_TOKENS = {"text-davinci-003": 4096, "gpt-3.5-turbo-0301": 4096}
+MAX_TOKENS = {"text-davinci-003": 4096, "gpt-3.5-turbo-0301": 4096, "gpt-4": 8192}
 
 # The maximum number of rows for the sentence embedding scatterplot.
 # For larger data sets, rows will be randomly sampled to select the data to plot.

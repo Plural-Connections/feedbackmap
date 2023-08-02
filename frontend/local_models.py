@@ -1,15 +1,21 @@
 
 from gensim.models.phrases import Phrases, ENGLISH_CONNECTOR_WORDS
 from gensim.parsing.preprocessing import STOPWORDS
+import hdbscan
 import numpy as np
 import pandas as pd
+from umap import umap_ as um
 
+import os
 import random
 import re
 from collections import defaultdict
 
 import app_config
 import parse_csv
+
+# Per https://github.com/huggingface/transformers/issues/5486
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 def get_config(mock_mode):
     """If mock_mode is set, don't load any NLP libraries."""
@@ -22,8 +28,7 @@ def get_config(mock_mode):
 class SentenceTransformersModel:
     def __init__(self):
         from sentence_transformers import SentenceTransformer
-
-        self.m = SentenceTransformer("all-MiniLM-L6-v2")
+        self.m = SentenceTransformer(app_config.EMBEDDING_MODEL)
 
     def encode(self, x):
         return self.m.encode(x)
@@ -124,3 +129,75 @@ def get_top_phrases(data, grouping_key):
     #   **{k:round(100.0*c[k]/(count_sums[k]+1), 2) for k in all_category_values}})     # Show P(word|category)
     table.sort(key=lambda x: x["Total"], reverse=True)
     return pd.DataFrame(table[:app_config.MAX_WORDS_AND_PHRASES])
+
+
+def embed_responses(df, q, split_sentences=True, ignore_names=False, compute_2d_points=True):
+    # Split raw responses into sentences and embed
+    parent_records = []
+    all_sentences = []
+    all_embeddings = []
+    for _, row in df.iterrows():
+        if split_sentences:
+            doc = app_config.CONFIG["nlp"](row[q])
+            sentences = [sent.text.strip() for sent in doc.sents]
+        else:
+            sentences = [row[q].strip()]
+
+        for cleaned_sent in sentences:
+            if cleaned_sent:
+                parent_records.append(dict(row))
+                all_sentences.append(cleaned_sent)
+
+    if ignore_names:
+        sentences_to_encode = [re.sub(r"\b[A-Z][a-z]+\b", "", s) for s in all_sentences]
+    else:
+        sentences_to_encode = all_sentences
+    all_embeddings = app_config.CONFIG["model"].encode(sentences_to_encode)
+
+    if len(all_embeddings) == 0:
+        st.warning("No responses found for *%s*." % (q))
+        st.stop()
+
+    # UMAP everything
+    if compute_2d_points:
+        all_umap_emb = um.UMAP(n_components=2, metric="euclidean").fit_transform(
+            all_embeddings
+        )
+    else:
+        all_umap_emb = None
+
+    return all_sentences, all_umap_emb, parent_records, all_embeddings
+
+
+def cluster_data(full_embs, min_cluster_size):
+    mid_umap = um.UMAP(
+        # Note: UMAP seems to require that k <= N-2
+        n_components=min(6, len(full_embs) - 2),
+        metric="cosine",
+    ).fit(full_embs)
+#    ).fit(full_embs[random_indices, :])
+    mid_umap_embs = mid_umap.transform(full_embs)
+    clusterer = hdbscan.HDBSCAN(
+#        min_samples=2,
+        prediction_data=True,
+        min_cluster_size=min(min_cluster_size, len(full_embs) - 1)
+    )
+    clusterer.fit(mid_umap_embs)
+
+    # Renumber clusters, most common to least common (with -1 last)
+    counts = defaultdict(lambda: 0)
+    for c in clusterer.labels_:
+        counts[str(c)] += 1
+    sorted_labels = list(counts.keys())
+
+    sorted_labels.sort(key=lambda x: ((x == "-1" and -1) or counts[x]), reverse=True)
+    final_labels = []
+    for label in clusterer.labels_:
+        label = str(label)
+        if label == "-1":  # unknown cluster
+            final_labels.append(app_config.UNCLUSTERED_NAME)
+        else:
+            cluster_name = "Cluster %d" % (sorted_labels.index(label) + 1)
+            final_labels.append(cluster_name)
+    return {"labels": final_labels, "clusterer": clusterer, "mid_umap": mid_umap,
+            "raw_labels": list([str(label) for label in clusterer.labels_])}
