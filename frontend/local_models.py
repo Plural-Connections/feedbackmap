@@ -6,12 +6,16 @@ import numpy as np
 import pandas as pd
 from umap import umap_ as um
 
+import os
 import random
 import re
 from collections import defaultdict
 
 import app_config
 import parse_csv
+
+# Per https://github.com/huggingface/transformers/issues/5486
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 def get_config(mock_mode):
     """If mock_mode is set, don't load any NLP libraries."""
@@ -24,7 +28,6 @@ def get_config(mock_mode):
 class SentenceTransformersModel:
     def __init__(self):
         from sentence_transformers import SentenceTransformer
-
         self.m = SentenceTransformer(app_config.EMBEDDING_MODEL)
 
     def encode(self, x):
@@ -167,12 +170,16 @@ def embed_responses(df, q, split_sentences=True, ignore_names=False, compute_2d_
 
 
 def cluster_data(full_embs, min_cluster_size):
-    mid_umap_embs = um.UMAP(
+    mid_umap = um.UMAP(
         # Note: UMAP seems to require that k <= N-2
-        n_components=min(50, len(full_embs) - 2),
-        metric="euclidean",
-    ).fit_transform(full_embs)
+        n_components=min(6, len(full_embs) - 2),
+        metric="cosine",
+    ).fit(full_embs)
+#    ).fit(full_embs[random_indices, :])
+    mid_umap_embs = mid_umap.transform(full_embs)
     clusterer = hdbscan.HDBSCAN(
+#        min_samples=2,
+        prediction_data=True,
         min_cluster_size=min(min_cluster_size, len(full_embs) - 1)
     )
     clusterer.fit(mid_umap_embs)
@@ -192,4 +199,5 @@ def cluster_data(full_embs, min_cluster_size):
         else:
             cluster_name = "Cluster %d" % (sorted_labels.index(label) + 1)
             final_labels.append(cluster_name)
-    return {"labels": final_labels, "clusterer": clusterer}
+    return {"labels": final_labels, "clusterer": clusterer, "mid_umap": mid_umap,
+            "raw_labels": list([str(label) for label in clusterer.labels_])}
