@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import streamlit as st
+import extra_streamlit_components as stx
 
 import import_tab
 import summary_tab
@@ -44,23 +45,42 @@ def streamlit_app():
         df = st.session_state["uploaded"]
 
     # Arrange tabs
-    tab_placeholder = st.empty()
-    with tab_placeholder:
+    tab_bar = st.empty()
+    content_placeholder = st.container()
+    summary_tab_st = None
+    analyze_tab_st = None
+
+    if "analyze" in st.session_state:
+        default_tab = 3
+    elif "uploaded" in st.session_state:
+        default_tab = 2
+    else:
+        default_tab = 1
+
+    with tab_bar:
         if "uploaded_file" in st.session_state:
             summary_title = "Summary (%s)" % (st.session_state["uploaded_file"].name)
         else:
-            summary_title = ""
-        if "analyze" in st.session_state:
-            analyze_tab_st, summary_tab_st, import_tab_st = st.tabs(
-                ["Response analysis", summary_title, "Welcome"]
-            )
-        elif "uploaded" in st.session_state:
-            summary_tab_st, import_tab_st = st.tabs([summary_title, "Welcome"])
-        else:
-            import_tab_st = st.tabs(["Welcome"])[0]
+            summary_title = "File summary"
+        chosen_id = stx.tab_bar(data=[
+            stx.TabBarItemData(id=1, title="Welcome", description=""),
+            stx.TabBarItemData(id=2, title=summary_title, description=""),
+            stx.TabBarItemData(id=3, title="Response analysis", description=""),
+        ], default=default_tab)
 
-    with import_tab_st:
-        import_tab.run(df)
+        with content_placeholder:
+            if chosen_id == "1":
+                import_tab.run(df)
+            elif chosen_id == "2":
+                if "uploaded" in st.session_state:
+                    summary_tab_st = content_placeholder.container()
+                else:
+                    st.write("Select a file in the Welcome tab to see a summary of it here.")
+            elif chosen_id == "3":
+                if "analyze" in st.session_state:
+                    analyze_tab_st = content_placeholder.container()
+                else:
+                    st.write("Select a column to analyze in the Summary tab to see an analysis here.")
 
     if df is not None:
         if (
@@ -74,8 +94,9 @@ def streamlit_app():
                 categories, text_response_columns = parse_csv.infer_column_types(df)
                 st.session_state["categories"] = categories.copy()
                 st.session_state["text_response_columns"] = text_response_columns.copy()
-        with summary_tab_st:
-            summary_tab.run(df, text_response_columns, categories)
+        if summary_tab_st:
+            with summary_tab_st:
+                summary_tab.run(df, text_response_columns, categories)
 
     if columns_to_analyze:
         with analyze_tab_st:
