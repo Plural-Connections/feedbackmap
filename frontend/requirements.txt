@@ -7,3 +7,4 @@ sentence-transformers==2.2.2
 spacy==3.5.0
 streamlit==1.18.1
 umap-learn==0.5.3
+extra_streamlit_components==0.1.60
